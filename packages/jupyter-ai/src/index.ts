@@ -28,6 +28,7 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ActiveCellManager } from './contexts/active-cell-context';
 import { Signal } from '@lumino/signaling';
 import { menuPlugin } from './plugins/menu-plugin';
+import { errorButtonPlugin } from './plugins/error-button-plugin';
 
 export type DocumentTracker = IWidgetTracker<IDocumentWidget>;
 
@@ -136,7 +137,7 @@ const plugin: JupyterFrontEndPlugin<IJaiCore> = {
   }
 };
 
-export default [plugin, statusItemPlugin, completionPlugin, menuPlugin];
+export default [plugin, statusItemPlugin, completionPlugin, menuPlugin, errorButtonPlugin];
 
 export * from './contexts';
 export * from './tokens';

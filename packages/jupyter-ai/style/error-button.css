@@ -1,0 +1,27 @@
+/* Jupyter AI Error Button Styles */
+
+.jupyter-ai-error-button {
+    margin-left: 4px;
+    background-color: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  
+  .jupyter-ai-error-button:hover {
+    background-color: #fecaca;
+    border-color: #f87171;
+  }
+  
+  .jupyter-ai-error-button .jp-ToolbarButtonComponent-label {
+    font-size: 11px;
+  }
+  
+  /* Ensure the cell header doesn't add unnecessary spacing when button is hidden */
+  .jp-Cell-header:empty {
+    display: none;
+  }
+  
