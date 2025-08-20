@@ -26,6 +26,7 @@ from .handlers import (
     SlashCommandsInfoHandler,
 )
 from .history import BoundedChatHistory
+from .oauth_token_manager import OAuthTokenManager
 
 JUPYTERNAUT_AVATAR_ROUTE = JupyternautPersona.avatar_route
 JUPYTERNAUT_AVATAR_PATH = str(
@@ -252,6 +253,12 @@ class AiExtension(ExtensionApp):
             defaults=defaults,
         )
 
+        # Initialize OAuth token manager
+        self.oauth_manager = OAuthTokenManager(
+            config_manager=self.settings["jai_config_manager"],
+            log=self.log
+        )
+
         # Expose a subset of settings as read-only to the providers
         BaseProvider.server_settings = types.MappingProxyType(
             self.serverapp.web_app.settings
@@ -308,6 +315,9 @@ class AiExtension(ExtensionApp):
         # show help message at server start
         self._show_help_message()
 
+        # Initialize OAuth manager asynchronously
+        loop.create_task(self.oauth_manager.init())
+
         latency_ms = round((time.time() - start) * 1000)
         self.log.info(f"Initialized Jupyter AI server extension in {latency_ms} ms.")
 
@@ -343,6 +353,12 @@ class AiExtension(ExtensionApp):
         Private method that defines the cleanup code to run when the server is
         stopping.
         """
+        # Cleanup OAuth manager
+        if hasattr(self, 'oauth_manager') and self.oauth_manager:
+            self.log.info("Disposing OAuth manager.")
+            self.oauth_manager.dispose()
+            self.log.debug("OAuth manager disposed.")
+
         if "dask_client_future" in self.settings:
             dask_client: DaskClient = await self.settings["dask_client_future"]
             self.log.info("Closing Dask client.")
