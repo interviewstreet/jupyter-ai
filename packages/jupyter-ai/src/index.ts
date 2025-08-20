@@ -111,7 +111,8 @@ const plugin: JupyterFrontEndPlugin<IJaiCore> = {
     /**
      * Add Chat widget to right sidebar
      */
-    app.shell.add(chatWidget, 'left', { rank: 2000 });
+    // HR Change- Move default icon to right
+    app.shell.add(chatWidget, 'right', { rank: 2000 });
 
     if (restorer) {
       restorer.add(chatWidget, 'jupyter-ai-chat');
