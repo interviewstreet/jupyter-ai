@@ -179,13 +179,6 @@ function ChatBody({
         chatHandler={chatHandler}
         focusInputSignal={focusInputSignal}
         streamingReplyHere={streamingReplyHere}
-        sx={{
-          paddingLeft: 4,
-          paddingRight: 4,
-          paddingTop: 3.5,
-          paddingBottom: 0,
-          borderTop: '1px solid var(--jp-border-color1)'
-        }}
         sendWithShiftEnter={sendWithShiftEnter}
         personaName={personaName}
       />

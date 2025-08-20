@@ -6,7 +6,6 @@ import {
   SxProps,
   TextField,
   Theme,
-  InputAdornment,
   Typography
 } from '@mui/material';
 import Download from '@mui/icons-material/Download';
@@ -268,15 +267,15 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   }
 
   // Set the helper text based on whether Shift+Enter is used for sending.
-  const helperText = props.sendWithShiftEnter ? (
-    <span>
-      Press <b>Shift</b>+<b>Enter</b> to send message
-    </span>
-  ) : (
-    <span>
-      Press <b>Shift</b>+<b>Enter</b> to add a new line
-    </span>
-  );
+  // const helperText = props.sendWithShiftEnter ? (
+  //   <span>
+  //     Press <b>Shift</b>+<b>Enter</b> to send message
+  //   </span>
+  // ) : (
+  //   <span>
+  //     Press <b>Shift</b>+<b>Enter</b> to add a new line
+  //   </span>
+  // );
 
   const sendButtonProps: SendButtonProps = {
     onSend,
@@ -308,7 +307,19 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   }
 
   return (
-    <Box sx={props.sx}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        bgcolor: '#fff',
+        border: '1px solid #e0e0e0',
+        borderRadius: 2,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        m: 2,
+        ...props.sx
+      }}
+    >
       <Autocomplete
         autoHighlight
         freeSolo
@@ -353,50 +364,55 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
         // ensure the autocomplete popup always renders on top
         componentsProps={{
           popper: {
-            placement: 'top'
+            placement: 'top-start'
           },
           paper: {
             sx: {
-              border: '1px solid lightgray'
+              border: '1px solid #e0e0e0',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)'
             }
           }
         }}
         renderOption={renderAutocompleteOption}
-        ListboxProps={{
-          sx: {
-            '& .MuiAutocomplete-option': {
-              padding: 2
-            }
-          }
-        }}
         renderInput={params => (
           <TextField
             {...params}
             fullWidth
             variant="outlined"
-            maxRows={20}
+            size="small"
+            minRows={5}
+            maxRows={10}
             multiline
-            placeholder={`Ask ${props.personaName}`}
+            placeholder={'Ask about your notebook and data'}
             onKeyDown={handleKeyDown}
             inputRef={inputRef}
+            sx={{
+              margin: 0,
+              '& .MuiOutlinedInput-root': {
+                border: 'none',
+                boxShadow: 'none',
+                '& fieldset': { border: 'none', p: 0 }
+              },
+              '& .MuiInputBase-input::placeholder': {
+                opacity: 0.5
+              }
+            }}
             InputProps={{
-              ...params.InputProps,
-              endAdornment: (
-                <InputAdornment
-                  position="end"
-                  sx={{ height: 'unset', alignSelf: 'flex-end' }}
-                >
-                  <SendButton {...sendButtonProps} />
-                </InputAdornment>
-              )
+              ...params.InputProps
             }}
-            FormHelperTextProps={{
-              sx: { marginLeft: 'auto', marginRight: 0 }
-            }}
-            helperText={input.length > 2 ? helperText : ' '}
           />
         )}
       />
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          p: 2,
+          alignItems: 'center'
+        }}
+      >
+        <SendButton {...sendButtonProps} />
+      </Box>
     </Box>
   );
 }
