@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import time
 from collections.abc import Coroutine
 from glob import iglob
 from typing import Any, Optional
@@ -33,9 +34,9 @@ from langchain_community.vectorstores import FAISS
 
 from .base import BaseChatHandler, SlashCommandRoutingType
 
-INDEX_SAVE_DIR = os.path.join(jupyter_data_dir(), "jupyter_ai", "indices")
+# INDEX_SAVE_DIR = os.path.join(jupyter_data_dir(), "jupyter_ai", "indices")
+INDEX_SAVE_DIR = os.path.join(os.path.dirname(__file__), "config", "indices")
 METADATA_SAVE_PATH = os.path.join(INDEX_SAVE_DIR, "metadata.json")
-
 
 class LearnChatHandler(BaseChatHandler):
     id = "learn"
@@ -44,6 +45,9 @@ class LearnChatHandler(BaseChatHandler):
     routing_type = SlashCommandRoutingType(slash_id="learn")
 
     uses_llm = True
+    
+    # Flag to control if manual learning is allowed
+    _manual_learning_disabled = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -136,6 +140,13 @@ class LearnChatHandler(BaseChatHandler):
             self.log.error(e)
 
     async def process_message(self, message: HumanChatMessage):
+        # Check if manual learning is disabled
+        if self._manual_learning_disabled:
+            self.reply(
+                "Manual learning is disabled. The system automatically learns from the project directory on startup."
+            )
+            return
+            
         # If no embedding provider has been selected
         em_provider_cls, em_provider_args = self.get_embedding_provider()
         if not em_provider_cls:
@@ -240,6 +251,8 @@ class LearnChatHandler(BaseChatHandler):
     async def learn_dir(
         self, path: str, chunk_size: int, chunk_overlap: int, all_files: bool = False
     ):
+        self.log.info(f"📁 Processing directory: {path}")
+        
         dask_client: DaskClient = await self.dask_client_future
         splitter_kwargs = {"chunk_size": chunk_size, "chunk_overlap": chunk_overlap}
         splitters = {
@@ -257,13 +270,32 @@ class LearnChatHandler(BaseChatHandler):
 
         delayed = split(path, all_files, splitter=splitter)
         doc_chunks = await dask_client.compute(delayed)
+        
+        # Log file processing info
+        self.log.info(f"📄 Created {len(doc_chunks)} document chunks")
+        file_types = set()
+        for chunk in doc_chunks:
+            if hasattr(chunk, 'metadata') and 'source' in chunk.metadata:
+                source_path = chunk.metadata['source']
+                ext = os.path.splitext(source_path)[1]
+                if ext:
+                    file_types.add(ext)
+                self.log.info(f"📑 Processing: {source_path}")
+        
+        if file_types:
+            self.log.info(f"📋 File types: {', '.join(sorted(file_types))}")
+        
         em_provider_cls, em_provider_args = self.get_embedding_provider()
         delayed = get_embeddings(doc_chunks, em_provider_cls, em_provider_args)
-        embedding_records = await dask_client.compute(delayed)
+        embedding_results = await dask_client.compute(delayed)
+        embedding_records, metadatas = embedding_results  # Extract both parts of tuple
+        
+        self.log.info(f"✨ Generated {len(embedding_records)} embeddings")
+        
         if self.index:
-            self.index.add_embeddings(*embedding_records)
+            self.index.add_embeddings(text_embeddings=embedding_records, metadatas=metadatas)
         else:
-            self.create(*embedding_records)
+            self.create(embedding_records, metadatas)  # Pass metadata to FAISS
 
         self._add_dir_to_metadata(path, chunk_size, chunk_overlap)
         self.prev_em_id = em_provider_cls.id + ":" + em_provider_args["model_id"]
@@ -323,6 +355,42 @@ class LearnChatHandler(BaseChatHandler):
         for path in paths:
             if os.path.isfile(path):
                 os.remove(path)
+
+    async def auto_learn_on_startup(self):
+        """Auto-learn from root directory on startup using existing learn logic"""
+        startup_start_time = time.time()
+        
+        try:
+            # Check if embedding provider is configured
+            em_provider_cls, em_provider_args = self.get_embedding_provider()
+            if not em_provider_cls:
+                self.log.warning("⚠️  No embedding provider configured. Skipping auto-learning.")
+                return
+
+            # Log model info
+            model_info = f"{em_provider_cls.id}:{em_provider_args.get('model_id', 'unknown')}"
+            self.log.info(f"🚀 AUTO-LEARNING STARTED 🚀")
+            self.log.info(f"🔧 Embedding model: {model_info}")
+            
+            # Clear existing and learn from root
+            self.delete()
+            self.log.info(f"📚 Learning from: {self.root_dir}")
+            
+            # Use existing learn_dir method with logging
+            await self.learn_dir(self.root_dir, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, all_files=False)
+            self.save()
+            
+            # Calculate and log completion time
+            elapsed_time = round(time.time() - startup_start_time, 2)
+            self.log.info(f"🎯 AUTO-LEARNING COMPLETED! 🎯")
+            self.log.info(f"⏱️  Total time: {elapsed_time} seconds")
+            self.log.info(f"💾 Knowledge base ready for /ask queries!")
+            
+        except Exception as e:
+            elapsed_time = round(time.time() - startup_start_time, 2)
+            self.log.error(f"💥 AUTO-LEARNING FAILED! 💥")
+            self.log.error(f"🔥 Error after {elapsed_time} seconds: {str(e)}")
+            self.log.error(f"🔍 Check embedding provider configuration and file permissions")
 
     async def relearn(self, metadata: IndexMetadata):
         # Index all dirs in the metadata

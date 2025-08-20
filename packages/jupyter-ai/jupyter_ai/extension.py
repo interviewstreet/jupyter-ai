@@ -305,11 +305,22 @@ class AiExtension(ExtensionApp):
         # initialize context providers
         self._init_context_provders()
 
+        # auto-learn from project root directory  
+        self._auto_learn_on_startup()
+
         # show help message at server start
         self._show_help_message()
 
         latency_ms = round((time.time() - start) * 1000)
         self.log.info(f"Initialized Jupyter AI server extension in {latency_ms} ms.")
+
+    def _auto_learn_on_startup(self):
+        """Trigger auto-learning on extension startup"""
+        learn_handler = self.settings["jai_chat_handlers"].get("/learn")
+        if learn_handler:
+            # Schedule auto-learning as a task
+            loop = self.settings["jai_event_loop"]
+            loop.create_task(learn_handler.auto_learn_on_startup())
 
     def _show_help_message(self):
         """
