@@ -22,6 +22,7 @@ import { AiService } from '../handler';
 import { SendButton, SendButtonProps } from './chat-input/send-button';
 import { useActiveCellContext } from '../contexts/active-cell-context';
 import { ChatHandler } from '../chat_handler';
+import ModelSelection from './chat-input/model-selection';
 
 type ChatInputProps = {
   chatHandler: ChatHandler;
@@ -411,6 +412,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
           alignItems: 'center'
         }}
       >
+        <ModelSelection />
         <SendButton {...sendButtonProps} />
       </Box>
     </Box>
