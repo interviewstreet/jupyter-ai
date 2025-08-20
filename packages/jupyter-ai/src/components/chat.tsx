@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Box } from '@mui/system';
 import { Button, IconButton, Stack } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -210,6 +210,11 @@ enum ChatView {
 export function Chat(props: ChatProps): JSX.Element {
   const [view, setView] = useState<ChatView>(props.chatView || ChatView.Chat);
   const [showWelcomeMessage, setShowWelcomeMessage] = useState<boolean>(false);
+  
+  // Read localStorage once on mount - no state needed since it won't change
+  const showSettingsButton = useMemo(() => {
+    return !!(localStorage.getItem('show-setting') === 'true');
+  }, []);
 
   const openSettingsView = () => {
     setShowWelcomeMessage(false);
@@ -263,9 +268,11 @@ export function Chat(props: ChatProps): JSX.Element {
                             <AddIcon />
                           </TooltippedIconButton>
                         )}
-                        <IconButton onClick={() => openSettingsView()}>
-                          <SettingsIcon />
-                        </IconButton>
+                        {showSettingsButton && (
+                          <IconButton onClick={() => openSettingsView()}>
+                            <SettingsIcon />
+                          </IconButton>
+                        )}
                       </Box>
                     ) : (
                       <Box />
