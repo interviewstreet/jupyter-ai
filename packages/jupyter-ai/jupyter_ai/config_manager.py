@@ -22,12 +22,17 @@ from traitlets.config import Configurable
 
 Logger = Union[logging.Logger, logging.LoggerAdapter]
 
+# HR Change - Changing default config file from disk to local file
 # default path to config
-DEFAULT_CONFIG_PATH = os.path.join(jupyter_data_dir(), "jupyter_ai", "config.json")
+# DEFAULT_CONFIG_PATH = os.path.join(jupyter_data_dir(), "jupyter_ai", "config.json")
+DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "config.json")
 
 # default path to config JSON Schema
+# DEFAULT_SCHEMA_PATH = os.path.join(
+#     jupyter_data_dir(), "jupyter_ai", "config_schema.json"
+# )
 DEFAULT_SCHEMA_PATH = os.path.join(
-    jupyter_data_dir(), "jupyter_ai", "config_schema.json"
+    os.path.dirname(__file__), "config", "config_schema.json"
 )
 
 # default no. of spaces to use when formatting config
