@@ -127,7 +127,9 @@ export function SendButton(props: SendButtonProps): JSX.Element {
         }}
         sx={{
           minWidth: 'unset',
-          borderRadius: '2px 0px 0px 2px'
+          p: 2,
+          width: 30,
+          height: 30
         }}
       >
         {action === 'stop' ? <StopIcon /> : <SendIcon />}
