@@ -316,7 +316,7 @@ class AiExtension(ExtensionApp):
         self._show_help_message()
 
         # Initialize OAuth manager asynchronously
-        loop.create_task(self.oauth_manager.init())
+        # loop.create_task(self.oauth_manager.init())
 
         latency_ms = round((time.time() - start) * 1000)
         self.log.info(f"Initialized Jupyter AI server extension in {latency_ms} ms.")
