@@ -114,9 +114,27 @@ class OAuthTokenManager:
                 models_configured += 1
                 self.log.info(f"[jupyter-ai] Pre-configured model: {full_model_id}")
             
+            existing_updated = 0
+            # For completions_fields and embeddings_fields: read existing keys and update them
+            update_field_types = ["completions_fields", "embeddings_fields"]
+            for field_type in update_field_types:
+                if field_type not in config_dict:
+                    config_dict[field_type] = {}
+                
+                # Update existing keys in this field type
+                for existing_key, existing_config in config_dict[field_type].items():
+                    if isinstance(existing_config, dict):
+                        # Update existing model with Portkey settings
+                        existing_config.update({
+                            "openai_api_base": self.provide_base_url,
+                            "default_headers": self.defaultHeader,
+                        })
+                        existing_updated += 1
+                        self.log.info(f"[jupyter-ai] Updated existing key: {existing_key} in {field_type}")
+            
             # Save the updated config
             self.config_manager._write_config(GlobalConfig(**config_dict))
-            self.log.info(f"[jupyter-ai] Pre-configured {models_configured} supported models")
+            self.log.info(f"[jupyter-ai] Configuration complete: {models_configured} models configured in fields, {existing_updated} existing keys updated in completions/embeddings")
             
         except Exception as e:
             self.log.error(f"❌ Failed to configure supported models: {e}")
