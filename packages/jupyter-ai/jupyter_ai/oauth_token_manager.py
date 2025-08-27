@@ -75,8 +75,9 @@ class OAuthTokenManager:
 
 
         # Pre-configure all supported models with Portkey settings
-        self.configure_all_supported_models()
         try:
+            self.configure_all_supported_models()
+
             config = self.config_manager._read_config()
             api_keys = config.api_keys or {}
             
@@ -201,7 +202,7 @@ class OAuthTokenManager:
             raise Exception("Auth token not loaded")
         
         if not self.host:
-            self.log.error("[[jupyter-ai]] Host not configured")
+            self.log.error("[jupyter-ai] Host not configured")
             raise Exception("Host not configured - please set host URL")
         
         url = f"https://{self.host}/candidate/authn/v1/candidate/session"
