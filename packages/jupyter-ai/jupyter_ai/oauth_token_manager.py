@@ -1,12 +1,13 @@
 import asyncio
 import base64
 import json
-import os
 import time
 import logging
-from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional
 import aiohttp
+from pathlib import Path
+
+from .models import UpdateConfigRequest, GlobalConfig
 
 class OAuthTokenManager:
     """
@@ -31,24 +32,20 @@ class OAuthTokenManager:
         self.create_session_promise: Optional[asyncio.Task] = None
         
         # Configuration
+        # TODO: Will be set later by user
+        self.defaultHeader = {
+            "x-portkey-config": "pc-defaul-01e117"
+        }
         self.auth_token_path = "/opt/hackerrank/tokens/hmap.token"
-        self.host = ""  # Will be set later by user
+        self.host = "appgateway.hackerrank.com" 
+        self.hardcoded_auth_token = "HARDCODED_TOKEN_FOR_DEV"
+        self.provide_base_url = "https://api.portkey.ai/v1"
 
     async def init(self):
         """Initialize OAuth manager when extension loads"""
-        self.log.info("Initializing OAuth token manager...")
-        
-        await self.load_tokens_from_config()
-        
-        if not self.access_token:
-            await self.create_session()
-        else:
-            self.schedule_proactive_refresh()
-            
-        self.log.info("OAuth token manager initialized successfully")
 
-    async def load_tokens_from_config(self):
-        """Load stored tokens from config.json"""
+        # Pre-configure all supported models with Portkey settings
+        self.configure_all_supported_models()
         try:
             config = self.config_manager._read_config()
             api_keys = config.api_keys or {}
@@ -56,23 +53,84 @@ class OAuthTokenManager:
             # Access token is stored as OPENAI_API_KEY
             self.access_token = api_keys.get("OPENAI_API_KEY")
             self.refresh_token = api_keys.get("REFRESH_TOKEN")
-            
-            if self.access_token:
-                self.log.debug("Loaded access token from config")
-            if self.refresh_token:
-                self.log.debug("Loaded refresh token from config")
-                
+
+            if not self.access_token:
+                self.log.info("[jupyter-ai] No access token found, creating new session...")
+                await self.create_session()
+            else:
+                self.log.info("[jupyter-ai] Access token found, scheduling proactive refresh...")
+                self.schedule_proactive_refresh()
         except Exception as e:
-            self.log.error(f"Failed to load tokens from config: {e}")
-    
+            self.log.error(f"[jupyter-ai]: Failed to initialize OAuth manager: {e}")
+            self.log.exception(e)
+            raise
+
+    def configure_all_supported_models(self):
+        """Pre-configure all supported models with Portkey settings"""
+        try:
+            # Path to supported models config
+            config_dir = Path(__file__).parent / "config"
+            supported_models_config_path = config_dir / "supported-models.json"
+            
+            if not supported_models_config_path.exists():
+                self.log.error(f"[jupyter-ai] Supported models file not found: {supported_models_config_path}")
+                return None
+                
+            with open(supported_models_config_path, 'r') as f:
+                supported_models_config = json.load(f)
+                
+            if not supported_models_config:
+                self.log.error("[jupyter-ai] Cannot configure models - failed to load supported models config")
+                return
+            
+            provider = supported_models_config.get("provider", "openai-chat-custom")
+            supported_models = supported_models_config.get("models", [])
+
+            # Load current config
+            config = self.config_manager._read_config()
+            config_dict = config.model_dump()
+            
+            # Ensure fields exists
+            if "fields" not in config_dict:
+                config_dict["fields"] = {}
+                
+            models_configured = 0
+            
+            # Configure each supported model
+            for model_info in supported_models:
+                model_id = model_info.get("id")
+                if not model_id:
+                    continue
+                    
+                # Create full model identifier with provider prefix
+                full_model_id = f"{provider}:{model_id}"
+                
+                # Pre-configure the model with all necessary settings
+                config_dict["fields"][full_model_id] = {
+                    "openai_api_base": self.provide_base_url,
+                    "default_headers": self.defaultHeader,
+                }
+                
+                models_configured += 1
+                self.log.info(f"[jupyter-ai] Pre-configured model: {full_model_id}")
+            
+            # Save the updated config
+            self.config_manager._write_config(GlobalConfig(**config_dict))
+            self.log.info(f"[jupyter-ai] Pre-configured {models_configured} supported models")
+            
+        except Exception as e:
+            self.log.error(f"❌ Failed to configure supported models: {e}")
+            self.log.exception(e)
+  
     # ===============================================
     # SESSION CREATION
     # ===============================================
     async def create_session(self):
         """Create new authentication session using HMAP token."""
-        self.log.debug(f"Creating new session...")
+        self.log.info("[jupyter-ai] Starting session creation process...")
 
         if self.create_session_promise:
+            self.log.info("[jupyter-ai] Session creation already in progress, waiting...")
             await self.create_session_promise
             return
 
@@ -80,17 +138,22 @@ class OAuthTokenManager:
         
         try:
             await self.create_session_promise
+        except Exception as e:
+            self.log.error(f"[jupyter-ai]: Session creation failed: {e}")
+            raise
         finally:
             self.create_session_promise = None
 
-    async def create_session_impl(self):
+    async def create_session_impl(self):        
         if not self.auth_token:
             await self.load_auth_token_from_file()
 
         if not self.auth_token:
+            self.log.error("[jupyter-ai] Auth token not loaded")
             raise Exception("Auth token not loaded")
         
         if not self.host:
+            self.log.error("[[jupyter-ai]] Host not configured")
             raise Exception("Host not configured - please set host URL")
         
         url = f"https://{self.host}/candidate/authn/v1/candidate/session"
@@ -102,42 +165,59 @@ class OAuthTokenManager:
                     headers={
                         'Cookie': f'cyno_session={self.auth_token}',
                     }
-                ) as resp:
-                    if not resp.ok:
+                ) as resp:                    
+                    if not (200 <= resp.status < 300):
+                        self.log.error(f"[jupyter-ai] HTTP error - Status: {resp.status}, Reason: {resp.reason}")
                         raise Exception(f"Failed to create session: {resp.status} {resp.reason}")
                     
-                    # Parse Set-Cookie headers for tokens
-                    set_cookie = resp.headers.get('set-cookie', '')
-                    if set_cookie:
-                        tokens = self.parse_cookie_tokens(set_cookie)
+                    access_token = resp.cookies.get('jwt_access_token')
+                    refresh_token = resp.cookies.get('jwt_refresh_token')
+                    
+                    # Extract values from cookie morsels
+                    access_token_value = access_token.value if access_token else None
+                    refresh_token_value = refresh_token.value if refresh_token else None
+                    
+                    if access_token_value or refresh_token_value:
                         await self.handle_and_persist_session_tokens(
-                            tokens.get('accessToken'),
-                            tokens.get('refreshToken')
+                            access_token_value,
+                            refresh_token_value
                         )
-                        self.log.info("Session created successfully")
+                        self.log.info("[jupyter-ai] Session created successfully")
                     else:
+                        self.log.error("[jupyter-ai] No tokens found in cookies")
                         raise Exception("No tokens received in response")
                         
             except aiohttp.ClientError as e:
-                self.log.error(f"Network error creating session: {e}")
+                self.log.error(f"[jupyter-ai] Network error creating session: {e}")
                 raise Exception(f"Failed to create session: {e}")
+            except Exception as e:
+                self.log.error(f"[jupyter-ai] Unexpected error: {e}")
+                raise
     
     async def load_auth_token_from_file(self):
-        """Load HMAP token from file (like VSCode's loadAuthTokenFromFile)"""
+        """Load HMAP token from file"""
+        
         try:
-            if not os.path.exists(self.auth_token_path):
-                raise FileNotFoundError(f"Auth token file not found: {self.auth_token_path}")
+            self.log.info(f"[jupyter-ai] Loading auth token from file: {self.auth_token_path}")
+            
+            # TODO: Uncomment when file access is available
+            # if not os.path.exists(self.auth_token_path):
+            #     self.log.error(f"[jupyter-ai] Auth token file not found: {self.auth_token_path}")
+            #     raise FileNotFoundError(f"Auth token file not found: {self.auth_token_path}")
                 
-            with open(self.auth_token_path, 'r') as f:
-                self.auth_token = f.read().strip()
-                
+            # with open(self.auth_token_path, 'r') as f:
+            #     self.auth_token = f.read().strip()
+
+            # Using hardcoded token for now (TODO: remove in production)
+            self.log.warning("[jupyter-ai] Using hardcoded auth token (development mode)")
+            self.auth_token = self.hardcoded_auth_token 
+            
             if not self.auth_token:
+                self.log.error("[jupyter-ai] Auth token is empty")
                 raise ValueError("Auth token file is empty")
-                
-            self.log.debug("Successfully loaded auth token from file")
             
         except Exception as e:
-            self.log.error(f"Failed to read auth_token file: {e}")
+            self.log.error(f"[jupyter-ai] Failed to read auth_token file: {e}")
             self.auth_token = None
             raise
 
@@ -146,48 +226,77 @@ class OAuthTokenManager:
     # ===============================================
     def schedule_proactive_refresh(self):
         """Schedule proactive token refresh based on JWT expiry."""
+        self.log.info("[jupyter-ai] Scheduling proactive token refresh...")
+        
         if self.refresh_timer:
             self.refresh_timer.cancel()
 
         expiry = self.parse_jwt_field(self.access_token, 'exp')
+        
         if not expiry:
-            self.log.warning("Cannot parse token expiry, attempting refresh immediately")
+            self.log.warning("[jupyter-ai] Cannot parse token expiry, attempting refresh immediately")
             expiry = int(time.time() * 1000)
             return
 
-        # for expiry < current time, 
-        # we are assuming that refresh token will work or need to create a new session
+        current_time = int(time.time() * 1000)
 
         # Refresh 1 minute before expiry (same as VSCode)
         refresh_time = expiry - 60_000
-        time_until_refresh = max(0, refresh_time - int(time.time() * 1000)) # 0 for already expired token
+        time_until_refresh = max(0, refresh_time - current_time) # 0 for already expired token
+        
+        if time_until_refresh == 0:
+            self.log.warning("[jupyter-ai] Token is already expired or expires very soon!")
+        
+        self.log.info(f"[jupyter-ai] Will refresh in {time_until_refresh / 1000} seconds")
         
         async def refresh_worker():
             try:
+                self.log.info(f"[jupyter-ai]: Waiting {time_until_refresh / 1000} seconds until refresh...")
                 # Wait until refresh time
                 await asyncio.sleep(time_until_refresh / 1000)
                 await self.refresh_session()
             except Exception as e:
-                self.log.error(f"Proactive token refresh failed: {e}")
+                self.log.error(f"[jupyter-ai]: Proactive token refresh failed: {e}")
+                self.log.exception(e)
         
         self.refresh_timer = asyncio.create_task(refresh_worker())
-        self.log.debug(f"Scheduled proactive refresh for {datetime.fromtimestamp(refresh_time / 1000)}")
 
     def parse_jwt_field(self, token: str, field: str) -> Optional[int]:
         """Parse JWT field (same as VSCode)"""
+        self.log.info(f"🔍 OAUTH_JWT: Parsing JWT field '{field}'...")
+        
         try:
+            if not token:
+                self.log.warning("⚠️ OAUTH_JWT: Token is empty or None")
+                return None
+                
             # Split JWT token and decode payload
-            payload_b64 = token.split('.')[1]
+            token_parts = token.split('.')
+            if len(token_parts) != 3:
+                self.log.warning(f"⚠️ OAUTH_JWT: Invalid JWT format - expected 3 parts, got {len(token_parts)}")
+                return None
+                
+            payload_b64 = token_parts[1]
+            self.log.info(f"🔍 OAUTH_JWT: Extracted payload part: {payload_b64[:20]}...")
+            
             # Add padding if needed
             payload_b64 += '=' * (4 - len(payload_b64) % 4)
+            
             payload_json = base64.b64decode(payload_b64).decode('utf-8')
+            self.log.info(f"🔍 OAUTH_JWT: Decoded payload JSON: {payload_json[:100]}...")
+            
             payload = json.loads(payload_json)
             
             value = payload.get(field)
+            self.log.info(f"🔍 OAUTH_JWT: Field '{field}' value: {value}")
+            
             if field in ['exp', 'iat']:
-                return value * 1000 if value else None  # Convert to milliseconds
+                result = value * 1000 if value else None  # Convert to milliseconds
+                self.log.info(f"🔍 OAUTH_JWT: Converted timestamp to milliseconds: {result}")
+                return result
             return value
-        except Exception:
+        except Exception as e:
+            self.log.warning(f"⚠️ OAUTH_JWT: Failed to parse JWT field '{field}': {e}")
             return None
     
     async def refresh_session(self):
@@ -209,61 +318,70 @@ class OAuthTokenManager:
                         'Cookie': f'jwt_refresh_token={self.refresh_token}',
                     }
                 ) as resp:
-                    if not resp.ok:
+                    
+                    if not (200 <= resp.status < 300):
+                        self.log.error(f"[jupyter-ai] HTTP error - Status: {resp.status}, Reason: {resp.reason}")
                         raise Exception(f"Failed to refresh session: {resp.status} {resp.reason}")
                     
-                    # Parse Set-Cookie headers for new tokens
-                    set_cookie = resp.headers.get('set-cookie', '')
-                    if set_cookie:
-                        tokens = self.parse_cookie_tokens(set_cookie)
+                    access_token = resp.cookies.get('jwt_access_token')
+                    refresh_token = resp.cookies.get('jwt_refresh_token')
+                    
+                    # Extract values from cookie morsels
+                    access_token_value = access_token.value if access_token else None
+                    refresh_token_value = refresh_token.value if refresh_token else None
+                    
+                    self.log.info(f"[jupyter-ai] New access token found: {bool(access_token_value)}")
+                    self.log.info(f"[jupyter-ai] New refresh token found: {bool(refresh_token_value)}")
+                    
+                    if access_token_value or refresh_token_value:
                         await self.handle_and_persist_session_tokens(
-                            tokens.get('accessToken'),
-                            tokens.get('refreshToken')
+                            access_token_value,
+                            refresh_token_value
                         )
-                        self.log.info("Session refreshed successfully")
                     else:
+                        self.log.error("[jupyter-ai] No tokens found in cookies")
                         raise Exception("No tokens received in refresh response")
                         
             except aiohttp.ClientError as e:
-                self.log.error(f"Network error refreshing session: {e}")
+                self.log.error(f"[jupyter-ai] Network error refreshing session: {e}")
                 raise Exception(f"Failed to refresh session: {e}")
+            except Exception as e:
+                self.log.error(f"[jupyter-ai] Unexpected error: {e}")
+                raise
 
     # ===============================================
     # COMMON 
     # ===============================================
-    def parse_cookie_tokens(self, set_cookie: str) -> Dict[str, str]:
-        """Parse access and refresh tokens from Set-Cookie header (same as VSCode)"""
-        import re
-        
-        access_match = re.search(r'jwt_access_token=([^;]+)', set_cookie)
-        refresh_match = re.search(r'jwt_refresh_token=([^;]+)', set_cookie)
-        
-        return {
-            'accessToken': access_match.group(1) if access_match else None,
-            'refreshToken': refresh_match.group(1) if refresh_match else None
-        }
-
     async def handle_and_persist_session_tokens(self, access_token: Optional[str], refresh_token: Optional[str]):
         """Handle new session tokens and save to token to config.json"""
         try:
-            update_data = {"api_keys": {}}
-
+            # Prepare API keys dictionary
+            api_keys = {}
             if access_token:
                 self.access_token = access_token
-                update_data["api_keys"]["OPENAI_API_KEY"] = access_token
+                api_keys["OPENAI_API_KEY"] = access_token
+            else:
+                self.log.warning("[jupyter-ai] No access token provided")
 
             if refresh_token:
                 self.refresh_token = refresh_token
-                update_data["api_keys"]["REFRESH_TOKEN"] = refresh_token
+                api_keys["REFRESH_TOKEN"] = refresh_token
+            else:
+                self.log.warning("[jupyter-ai] No refresh token provided")
             
-            self.config_manager.update_config(update_data)
+            # Create UpdateConfigRequest object as expected by config_manager
+            update_request = UpdateConfigRequest(api_keys=api_keys)
+            self.config_manager.update_config(update_request)
+
             self.schedule_proactive_refresh()
-            self.log.debug("Persisted tokens to config")
         except Exception as e:
-            self.log.error(f"Failed to persist tokens to config: {e}")
+            self.log.error(f"[jupyter-ai]: Failed to persist tokens to config: {e}")
+            self.log.exception(e)
+            raise
 
     def dispose(self):
         """Clean up resources (same as VSCode)"""
+        self.log.info("[jupyter-ai] Disposing OAuth token manager...")
         if self.refresh_timer:
             self.refresh_timer.cancel()
             self.refresh_timer = None
@@ -272,5 +390,8 @@ class OAuthTokenManager:
             self.create_session_promise.cancel()
             self.create_session_promise = None
             
-        self.log.debug("OAuth token manager disposed")
-    
+        # Clear sensitive data
+        self.auth_token = None
+        self.access_token = None
+        self.refresh_token = None
+            
