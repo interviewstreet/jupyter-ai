@@ -254,6 +254,7 @@ class AiExtension(ExtensionApp):
         )
 
         # Initialize OAuth token manager
+        self.log.info("[jupyter-ai] Creating OAuth token manager instance...")
         self.oauth_manager = OAuthTokenManager(
             config_manager=self.settings["jai_config_manager"],
             log=self.log
@@ -315,8 +316,16 @@ class AiExtension(ExtensionApp):
         # show help message at server start
         self._show_help_message()
 
-        # Initialize OAuth manager asynchronously
-        # loop.create_task(self.oauth_manager.init())
+        # Initialize OAuth manager asynchronously with error handling       
+        async def init_oauth_with_error_handling():
+            try:
+                await self.oauth_manager.init()
+            except Exception as e:
+                self.log.error(f"[jupyter-ai] Failed to initialize OAuth manager: {e}")
+                self.log.exception(e)
+        
+        self.log.info("[jupyter-ai] Scheduling OAuth manager initialization task...")
+        loop.create_task(init_oauth_with_error_handling())
 
         latency_ms = round((time.time() - start) * 1000)
         self.log.info(f"Initialized Jupyter AI server extension in {latency_ms} ms.")
