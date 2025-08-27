@@ -11,7 +11,6 @@ import {
 import Check from '@mui/icons-material/Check';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUp from '@mui/icons-material/KeyboardArrowUp';
-import supportedModelsConfig from '../../../jupyter_ai/config/supported-models.json';
 import { AiService } from '../../handler';
 import { useStackingAlert } from '../mui-extras/stacking-alert';
 
@@ -26,8 +25,39 @@ export type SupportedModelsConfig = {
   models: SupportedModel[];
 };
 
-const PROVIDER_ID = supportedModelsConfig.provider;
-const DEFAULT_MODEL_OPTIONS: SupportedModel[] = supportedModelsConfig.models;
+const PROVIDER_ID = 'openai-chat-custom';
+const DEFAULT_MODEL_OPTIONS: SupportedModel[] = [
+  {
+    id: 'gpt-4',
+    label: 'GPT-4',
+    description: 'Most capable model for complex, multi-step tasks'
+  },
+  {
+    id: 'gpt-4o',
+    label: 'GPT-4o',
+    description: 'High-intelligence flagship model for complex, multi-step tasks'
+  },
+  {
+    id: 'gpt-4o-mini',
+    label: 'GPT-4o Mini',
+    description: 'Affordable and intelligent small model for fast, lightweight tasks'
+  },
+  {
+    id: 'gpt-4-turbo',
+    label: 'GPT-4 Turbo',
+    description: 'The latest GPT-4 Turbo model with vision capabilities'
+  },
+  {
+    id: 'gpt-3.5-turbo',
+    label: 'GPT-3.5 Turbo',
+    description: 'Fast, inexpensive model for simple tasks'
+  },
+  {
+    id: 'chatgpt-4o-latest',
+    label: 'ChatGPT-4o Latest',
+    description: 'Dynamic model continuously updated to the current version of ChatGPT'
+  }
+];
 
 export function ModelSelection(): JSX.Element {
   // Alert for showing error messages to user
