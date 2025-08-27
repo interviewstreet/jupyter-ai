@@ -9,6 +9,32 @@ from pathlib import Path
 
 from .models import UpdateConfigRequest, GlobalConfig
 
+# HR Configuration for different environments
+HR_CONFIG = {
+    "prod": {
+        "portkeyConfig": "pc-defaul-01e117",
+        "krakendHost": "appgateway.hackerrank.com"
+    },
+    "private": {
+        "portkeyConfig": "pc-defaul-f995c3", 
+        "krakendHost": "pgr4g8vmr5.execute-api.us-east-2.amazonaws.com/dev/ai-auth"
+    }
+}
+
+async def isProd() -> bool:
+    """Check if running in production environment"""
+    # For now, always return False (development/private environment)
+    # TODO: Implement proper environment detection logic
+    return True
+
+async def getKrakendHost() -> str:
+    """Get Krakend host based on environment"""
+    return HR_CONFIG["prod"]["krakendHost"] if await isProd() else HR_CONFIG["private"]["krakendHost"]
+
+async def getPortkeyConfig() -> str:
+    """Get Portkey config based on environment"""
+    return HR_CONFIG["prod"]["portkeyConfig"] if await isProd() else HR_CONFIG["private"]["portkeyConfig"]
+
 class OAuthTokenManager:
     """
     OAuth token manager for Jupyter AI.
@@ -31,18 +57,22 @@ class OAuthTokenManager:
         self.refresh_timer: Optional[asyncio.Task] = None
         self.create_session_promise: Optional[asyncio.Task] = None
         
-        # Configuration
-        # TODO: Will be set later by user
-        self.defaultHeader = {
-            "x-portkey-config": "pc-defaul-01e117"
-        }
+        # Configuration - will be set dynamically in init()
+        self.defaultHeader = {}
         self.auth_token_path = "/opt/hackerrank/tokens/hmap.token"
-        self.host = "appgateway.hackerrank.com" 
+        self.host = ""
         self.hardcoded_auth_token = "HARDCODED_TOKEN_FOR_DEV"
         self.provide_base_url = "https://api.portkey.ai/v1"
 
     async def init(self):
         """Initialize OAuth manager when extension loads"""
+        # Set dynamic configuration based on environment
+        self.host = await getKrakendHost()
+        portkey_config = await getPortkeyConfig()
+        self.defaultHeader = {
+            "x-portkey-config": portkey_config
+        }
+
 
         # Pre-configure all supported models with Portkey settings
         self.configure_all_supported_models()
