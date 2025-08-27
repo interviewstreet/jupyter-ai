@@ -11,17 +11,29 @@ import {
 import Check from '@mui/icons-material/Check';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUp from '@mui/icons-material/KeyboardArrowUp';
-import { DEFAULT_MODEL_OPTIONS, ModelOption } from './model-config';
+import supportedModelsConfig from '../../../jupyter_ai/config/supported-models.json';
 import { AiService } from '../../handler';
 import { useStackingAlert } from '../mui-extras/stacking-alert';
 
-export type ModelSelectionProps = {};
+export type SupportedModel = {
+  id: string;
+  label: string;
+  description: string;
+};
 
-export function ModelSelection(props: ModelSelectionProps): JSX.Element {
+export type SupportedModelsConfig = {
+  provider: string;
+  models: SupportedModel[];
+};
+
+const PROVIDER_ID = supportedModelsConfig.provider;
+const DEFAULT_MODEL_OPTIONS: SupportedModel[] = supportedModelsConfig.models;
+
+export function ModelSelection(): JSX.Element {
   // Alert for showing error messages to user
   const alert = useStackingAlert();
 
-  const [selectedModel, setSelectedModel] = useState<ModelOption>(
+  const [selectedModel, setSelectedModel] = useState<SupportedModel>(
     DEFAULT_MODEL_OPTIONS[0]
   );
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
@@ -37,7 +49,7 @@ export function ModelSelection(props: ModelSelectionProps): JSX.Element {
         if (config.model_provider_id) {
           const mid = config.model_provider_id?.split(':')[1];
           const model =
-            DEFAULT_MODEL_OPTIONS.find(m => m.llm === mid) ??
+            DEFAULT_MODEL_OPTIONS.find(m => m.id === mid) ??
             DEFAULT_MODEL_OPTIONS[0];
           setSelectedModel(model);
         }
@@ -53,33 +65,22 @@ export function ModelSelection(props: ModelSelectionProps): JSX.Element {
    * Updates both UI state and backend configuration
    */
   const handleModelSelection = useCallback(
-    async (model: ModelOption) => {
+    async (model: SupportedModel) => {
       setIsUpdating(true);
       const previousModel = selectedModel;
       setSelectedModel(model);
       setAnchor(null);
 
       try {
-        // Update backend configuration
         const currentConfig = await AiService.getConfig();
-        const lmGlobalId = `openai-chat-custom:${model.llm}`;
+        const lmGlobalId = `${PROVIDER_ID}:${model.id}`;
         const updateRequest: AiService.UpdateConfigRequest = {
           model_provider_id: lmGlobalId,
-          fields: lmGlobalId
-            ? {
-                [lmGlobalId]: {
-                  openai_api_base: 'https://api.portkey.ai/v1'
-                }
-              }
-            : {},
           last_read: currentConfig.last_read
         };
 
         await AiService.updateConfig(updateRequest);
-        console.info(
-          `✅ Updated completion model to: ${model.llm}`,
-          updateRequest
-        );
+        console.info(`✅ Updated model to: ${lmGlobalId}`, updateRequest);
       } catch (error) {
         console.error('❌ Failed to update completion model:', error);
         setSelectedModel(previousModel);
@@ -139,10 +140,10 @@ export function ModelSelection(props: ModelSelectionProps): JSX.Element {
         }}
       >
         {DEFAULT_MODEL_OPTIONS.map(opt => {
-          const isSelected = opt.llm === selectedModel.llm;
+          const isSelected = opt.id === selectedModel.id;
           return (
             <MenuItem
-              key={opt.llm}
+              key={opt.id}
               onClick={() => handleModelSelection(opt)}
               disabled={isUpdating}
             >
