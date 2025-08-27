@@ -122,8 +122,7 @@ class OAuthTokenManager:
             config_dict = config.model_dump()
             
             # Ensure fields exists
-            if "fields" not in config_dict:
-                config_dict["fields"] = {}
+            config_dict["fields"] = {}
                 
             models_configured = 0
             
