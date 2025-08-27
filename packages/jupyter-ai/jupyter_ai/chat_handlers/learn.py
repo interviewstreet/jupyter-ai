@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import time
 from collections.abc import Coroutine
 from glob import iglob
 from typing import Any, Optional
@@ -33,7 +34,8 @@ from langchain_community.vectorstores import FAISS
 
 from .base import BaseChatHandler, SlashCommandRoutingType
 
-INDEX_SAVE_DIR = os.path.join(jupyter_data_dir(), "jupyter_ai", "indices")
+# INDEX_SAVE_DIR = os.path.join(jupyter_data_dir(), "jupyter_ai", "indices")
+INDEX_SAVE_DIR = os.path.join(os.path.dirname(__file__), "config", "indices")
 METADATA_SAVE_PATH = os.path.join(INDEX_SAVE_DIR, "metadata.json")
 
 
@@ -259,11 +261,18 @@ class LearnChatHandler(BaseChatHandler):
         doc_chunks = await dask_client.compute(delayed)
         em_provider_cls, em_provider_args = self.get_embedding_provider()
         delayed = get_embeddings(doc_chunks, em_provider_cls, em_provider_args)
-        embedding_records = await dask_client.compute(delayed)
+        embedding_results = await dask_client.compute(delayed)        
+        # IMPORTANT: get_embeddings now returns a tuple of (embedding_records, metadatas)
+        # This change was made to preserve document metadata alongside embeddings for proper FAISS indexing
+        # Future developers: embedding_records contains the vector embeddings, metadatas contains document info
+        embedding_records, metadatas = embedding_results  # Extract both parts of tuple
+
         if self.index:
-            self.index.add_embeddings(*embedding_records)
+            self.index.add_embeddings(text_embeddings=embedding_records, metadatas=metadatas)
+            self.log.info("[jupyter-ai] Successfully added embeddings to existing index")
         else:
-            self.create(*embedding_records)
+            self.create(embedding_records, metadatas)  # Pass metadata to FAISS
+            self.log.info("[jupyter-ai] Successfully created new index")
 
         self._add_dir_to_metadata(path, chunk_size, chunk_overlap)
         self.prev_em_id = em_provider_cls.id + ":" + em_provider_args["model_id"]
@@ -323,6 +332,36 @@ class LearnChatHandler(BaseChatHandler):
         for path in paths:
             if os.path.isfile(path):
                 os.remove(path)
+
+    async def auto_learn_on_startup(self):
+        """Auto-learn from root directory on startup using existing learn logic"""
+        startup_start_time = time.time()
+        
+        try:
+            # Check if embedding provider is configured
+            em_provider_cls, em_provider_args = self.get_embedding_provider()
+            if not em_provider_cls:
+                self.log.warning("[jupyter-ai]  No embedding provider configured. Skipping auto-learning.")
+                return
+
+            model_info = f"{em_provider_cls.id}:{em_provider_args.get('model_id', 'unknown')}"
+            self.log.info(f"[jupyter-ai] Auto learning started from {self.root_dir}, embedding model: {model_info}")
+
+            # Clear existing and learn from root
+            self.delete()
+            
+            # Use existing learn_dir method
+            await self.learn_dir(self.root_dir, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, all_files=False)
+            self.save()
+            
+            # Calculate and log completion time
+            elapsed_time = round(time.time() - startup_start_time, 2)
+            self.log.info(f"[jupyter-ai] Auto-learning completed in {elapsed_time}s.")
+            
+        except Exception as e:
+            elapsed_time = round(time.time() - startup_start_time, 2)
+            self.log.error(f"[jupyter-ai]: Auto-learning failed after {elapsed_time}s: {e}")
+            self.log.exception(e)
 
     async def relearn(self, metadata: IndexMetadata):
         # Index all dirs in the metadata
