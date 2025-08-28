@@ -22,6 +22,7 @@ class ChatSessionManager:
     
     def __init__(self, root_dir: str = None, log=None):
         self.log = log
+        self.current_chat_id = None
         # Ensure chat_sessions directory exists
         os.makedirs(CHAT_SESSIONS_DIR, exist_ok=True)
     
