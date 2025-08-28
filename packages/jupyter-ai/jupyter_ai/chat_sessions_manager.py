@@ -146,6 +146,7 @@ class ChatSessionManager:
     def reconstruct_chat_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """
         Load and reconstruct a chat session with properly formatted messages and LLM memory pairs.
+        Handles edge cases like orphaned messages, ordering issues, and malformed data.
         Returns dict with 'messages' and 'llm_memory_pairs' keys, or None if session not found.
         """
         try:
@@ -155,49 +156,150 @@ class ChatSessionManager:
             
             loaded_history = session_data.get("chat_history", [])
             reconstructed_messages = []
-            llm_memory_pairs = []
-            human_messages = {}
+            human_messages = {}  # id -> {message, prompt, time}
+            agent_responses = []  # List of agent messages with metadata
             
             # Import here to avoid circular imports
             from .models import HumanChatMessage, AgentChatMessage, AgentStreamMessage
             
-            # First pass: reconstruct messages and collect human messages
+            # First pass: reconstruct and categorize all messages with validation
             for msg_data in loaded_history:
                 if not isinstance(msg_data, dict):
+                    self.log.warning(f"[jupyter-ai] Skipping non-dict message data: {type(msg_data)}")
                     continue
                     
                 try:
                     msg_type = msg_data.get("type")
+                    msg_id = msg_data.get("id")
+                    msg_time = msg_data.get("time", 0)
+                    
+                    # Validate required fields
+                    if not msg_type or not msg_id:
+                        self.log.warning(f"[jupyter-ai] Skipping message with missing type or id: {msg_data}")
+                        continue
+                    
                     if msg_type == "human":
+                        # Validate human message structure
+                        if "prompt" not in msg_data:
+                            self.log.warning(f"[jupyter-ai] Skipping human message without prompt: {msg_id}")
+                            continue
+                            
                         message = HumanChatMessage(**msg_data)
                         reconstructed_messages.append(message)
-                        human_messages[message.id] = message.prompt
-                    elif msg_type == "agent":
-                        message = AgentChatMessage(**msg_data)
+                        human_messages[message.id] = {
+                            "message": message,
+                            "prompt": message.prompt,
+                            "time": msg_time
+                        }
+                        self.log.debug(f"[jupyter-ai] Reconstructed human message: {msg_id}")
+                        
+                    elif msg_type in ["agent", "agent-stream"]:
+                        # Validate agent message structure
+                        if "body" not in msg_data:
+                            self.log.warning(f"[jupyter-ai] Skipping agent message without body: {msg_id}")
+                            continue
+                            
+                        if msg_type == "agent":
+                            message = AgentChatMessage(**msg_data)
+                        else:  # agent-stream
+                            message = AgentStreamMessage(**msg_data)
+                            # Skip incomplete stream messages
+                            if hasattr(message, 'complete') and not message.complete:
+                                self.log.debug(f"[jupyter-ai] Skipping incomplete stream message: {msg_id}")
+                                continue
+                        
                         reconstructed_messages.append(message)
-                    elif msg_type == "agent-stream":
-                        message = AgentStreamMessage(**msg_data)
-                        reconstructed_messages.append(message)
+                        agent_responses.append({
+                            "message": message,
+                            "reply_to": getattr(message, 'reply_to', ''),
+                            "body": message.body,
+                            "time": msg_time,
+                            "id": msg_id
+                        })
+                        self.log.debug(f"[jupyter-ai] Reconstructed {msg_type} message: {msg_id}")
+                        
                     else:
-                        self.log.warning(f"[jupyter-ai] Unknown message type: {msg_type}")
+                        self.log.warning(f"[jupyter-ai] Unknown message type '{msg_type}' for message: {msg_id}")
+                        
                 except Exception as e:
-                    self.log.warning(f"[jupyter-ai] Could not reconstruct message: {e}")
+                    self.log.error(f"[jupyter-ai] Could not reconstruct message {msg_data.get('id', 'unknown')}: {e}")
                     continue
             
-            # Second pass: extract LLM memory pairs from reconstructed messages
-            for message in reconstructed_messages:
-                if hasattr(message, 'type') and message.type in ["agent", "agent-stream"]:
-                    if hasattr(message, 'reply_to') and message.reply_to in human_messages:
-                        llm_memory_pairs.append({
-                            "human": human_messages[message.reply_to],
-                            "ai": message.body,
-                            "human_id": message.reply_to
-                        })
+            # Sort messages chronologically to ensure proper order
+            reconstructed_messages.sort(key=lambda msg: getattr(msg, 'time', 0))
+            
+            # Second pass: create LLM memory pairs with edge case handling
+            llm_memory_pairs = []
+            used_human_messages = set()  # Track which human messages have responses
+            
+            # Sort agent responses by time to ensure chronological processing
+            agent_responses.sort(key=lambda resp: resp["time"])
+            
+            for agent_resp in agent_responses:
+                reply_to = agent_resp["reply_to"]
+                
+                # Skip agent messages without reply_to (help messages, etc.)
+                if not reply_to:
+                    self.log.debug(f"[jupyter-ai] Skipping agent message without reply_to: {agent_resp['id']}")
+                    continue
+                
+                # Check if the referenced human message exists
+                if reply_to not in human_messages:
+                    self.log.warning(f"[jupyter-ai] Orphaned agent message - human message {reply_to} not found for agent {agent_resp['id']}")
+                    continue
+                
+                human_data = human_messages[reply_to]
+                
+                # Ensure agent response comes after human message (temporal validation)
+                if agent_resp["time"] < human_data["time"]:
+                    self.log.warning(f"[jupyter-ai] Agent response {agent_resp['id']} timestamp {agent_resp['time']} is before human message {reply_to} timestamp {human_data['time']}")
+                    # Still include it but log the anomaly
+                
+                # Handle multiple agent responses to same human message
+                if reply_to in used_human_messages:
+                    self.log.debug(f"[jupyter-ai] Multiple agent responses found for human message {reply_to}")
+                
+                # Create LLM memory pair
+                llm_memory_pairs.append({
+                    "human": human_data["prompt"],
+                    "ai": agent_resp["body"],
+                    "human_id": reply_to,
+                    "agent_id": agent_resp["id"],
+                    "human_time": human_data["time"],
+                    "agent_time": agent_resp["time"]
+                })
+                
+                used_human_messages.add(reply_to)
+                self.log.debug(f"[jupyter-ai] Created LLM memory pair: {reply_to} -> {agent_resp['id']}")
+            
+            # Sort LLM memory pairs chronologically by human message time
+            llm_memory_pairs.sort(key=lambda pair: pair["human_time"])
+            
+            # Log reconstruction summary
+            total_messages = len(reconstructed_messages)
+            human_count = len(human_messages)
+            agent_count = len(agent_responses)
+            pair_count = len(llm_memory_pairs)
+            orphaned_agents = agent_count - sum(1 for resp in agent_responses if resp["reply_to"] in human_messages)
+            
+            self.log.info(f"[jupyter-ai] Session {session_id} reconstruction complete: "
+                         f"{total_messages} messages ({human_count} human, {agent_count} agent), "
+                         f"{pair_count} LLM pairs, {orphaned_agents} orphaned agents")
+            
+            if orphaned_agents > 0:
+                self.log.warning(f"[jupyter-ai] Session {session_id} has {orphaned_agents} orphaned agent messages")
             
             return {
                 "messages": reconstructed_messages,
                 "llm_memory_pairs": llm_memory_pairs,
-                "metadata": session_data.get("metadata", {})
+                "metadata": session_data.get("metadata", {}),
+                "reconstruction_stats": {
+                    "total_messages": total_messages,
+                    "human_messages": human_count,
+                    "agent_messages": agent_count,
+                    "llm_pairs": pair_count,
+                    "orphaned_agents": orphaned_agents
+                }
             }
             
         except Exception as e:

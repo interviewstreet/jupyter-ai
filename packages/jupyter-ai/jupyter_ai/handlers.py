@@ -856,6 +856,11 @@ class ChatSessionsHandler(BaseAPIHandler):
         try:
             for pair in llm_memory_pairs:
                 try:
+                    # Validate required fields in memory pair
+                    if not all(key in pair for key in ["human", "ai", "human_id"]):
+                        self.log.warning(f"[jupyter-ai] Skipping incomplete LLM memory pair: {pair}")
+                        continue
+                    
                     # Create properly formatted messages for LLM memory
                     human_msg = HumanMessage(content=pair["human"])
                     human_msg.additional_kwargs[HUMAN_MSG_ID_KEY] = pair["human_id"]
@@ -870,43 +875,63 @@ class ChatSessionsHandler(BaseAPIHandler):
                     self.log.warning(f"[jupyter-ai] Could not reconstruct LLM memory pair: {e}")
                     continue
             
-            self.log.info(f"[jupyter-ai] Populated LLM memory with {len(llm_memory_pairs)} conversation pairs")
-            
+            self.log.info(f"[jupyter-ai] LLM memory population complete")
+
         except Exception as e:
             self.log.error(f"[jupyter-ai] Error populating LLM memory: {e}")
             self.log.exception(e)
 
     def _broadcast_clear_and_help(self):
-        """Use existing broadcast mechanism to clear chat and send help"""
+        """Broadcast clear message and help using existing RootChatHandler mechanism"""
         try:
             # Get the first RootChatHandler to use its broadcast mechanism
             root_chat_handlers = self.settings.get("jai_root_chat_handlers", {})
             if root_chat_handlers:
                 first_handler = next(iter(root_chat_handlers.values()))
-                if first_handler:
+                if first_handler and hasattr(first_handler, 'broadcast_message'):
                     first_handler.broadcast_message(ClearMessage())
                     default_handler = self.settings.get("jai_chat_handlers", {}).get("default")
                     if default_handler and hasattr(default_handler, 'send_help_message'):
                         default_handler.send_help_message()
         except Exception as e:
-            self.log.warning(f"[jupyter-ai] Could not broadcast clear and help: {e}")
+            self.log.error(f"[jupyter-ai] Could not broadcast clear and help: {e}")
+            self.log.exception(e)
 
     def _broadcast_chat_history(self):
-        """Use existing broadcast mechanism to update chat history"""
+        """Broadcast updated chat history to all clients using ConnectionMessage"""
         try:
-            # Get the first RootChatHandler to use its broadcast mechanism
             root_chat_handlers = self.settings.get("jai_root_chat_handlers", {})
-            for client_id, client in root_chat_handlers.items():
-                if client:
-                    connection_message = ConnectionMessage(
-                        client_id=client_id,
-                        history=ChatHistory(
-                            messages=self.chat_history,
-                            pending_messages=self.settings.get("pending_messages", [])
-                        )
-                    )
-                    client.broadcast_message(connection_message)
+            if not root_chat_handlers:
+                return
             
-            self.log.info(f"[jupyter-ai] Successfully broadcasted chat history to {len(root_chat_handlers)} clients")
+            successful_broadcasts = 0
+            chat_history_data = ChatHistory(
+                messages=self.chat_history,
+                pending_messages=self.settings.get("pending_messages", [])
+            )
+            
+            # Send personalized ConnectionMessage to each client
+            # Note: ConnectionMessage is per-client and should NOT use broadcast_message
+            for client_id, client in root_chat_handlers.items():
+                try:
+                    if client and hasattr(client, 'write_message'):
+                        connection_message = ConnectionMessage(
+                            client_id=client_id,
+                            history=chat_history_data
+                        )
+                        # Use write_message directly, not broadcast_message
+                        # (ConnectionMessage is per-client, not a broadcast message)
+                        client.write_message(connection_message.model_dump())
+                        successful_broadcasts += 1
+                        self.log.debug(f"[jupyter-ai] Sent chat history to client {client_id}")
+                    else:
+                        self.log.warning(f"[jupyter-ai] Client {client_id} is not available for messaging")
+                except Exception as client_error:
+                    self.log.warning(f"[jupyter-ai] Failed to send history to client {client_id}: {client_error}")
+                    continue
+            
+            self.log.info(f"[jupyter-ai] Successfully sent chat history to {successful_broadcasts}/{len(root_chat_handlers)} clients")
+            
         except Exception as e:
-            self.log.warning(f"[jupyter-ai] Could not broadcast chat history: {e}")
+            self.log.error(f"[jupyter-ai] Error broadcasting chat history: {e}")
+            self.log.exception(e)
