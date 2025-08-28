@@ -3,7 +3,8 @@ from typing import Optional
 
 from langchain.schema import Document
 from langchain.text_splitter import (
-    MarkdownTextSplitter,
+    MarkdownHeaderTextSplitter,
+    PythonCodeTextSplitter,
     RecursiveCharacterTextSplitter,
     TextSplitter,
 )
@@ -38,13 +39,50 @@ import nbformat
 
 
 class NotebookSplitter(TextSplitter):
+    """
+    Stable splitter for .ipynb:
+    - Split per cell (cell boundaries are stable).
+    - Markdown cells: split by headings (H1/H2/H3), then size-based.
+    - Code cells: use Python-aware splitter.
+    Returns: list[str] chunks (plain text, no injected markers).
+    """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.markdown_splitter = MarkdownTextSplitter(
+        self.md_header_splitter = MarkdownHeaderTextSplitter(
+            headers_to_split_on=[("#", "h1"), ("##", "h2"), ("###", "h3")]
+        )
+        self.md_text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self._chunk_size, chunk_overlap=self._chunk_overlap
+        )
+        self.code_splitter = PythonCodeTextSplitter(
             chunk_size=self._chunk_size, chunk_overlap=self._chunk_overlap
         )
 
     def split_text(self, text: str):
+        """Split notebook into stable pure text chunks per cell"""
         nb = nbformat.reads(text, as_version=4)
-        md = "\n\n".join([cell.source for cell in nb.cells])
-        return self.markdown_splitter.split_text(md)
+        chunks = []
+        
+        for cell in nb.cells:
+            src = (cell.get("source") or "").strip()
+            if not src:
+                # Skip empty cells
+                continue
+                
+            if cell.cell_type == "markdown":
+                # Split markdown cells by headings first, then by size
+                # 1) keep sections stable by headings
+                sections = self.md_header_splitter.split_text(src)
+                # 2) size-based within each section
+                for sec in sections:
+                    for c in self.md_text_splitter.split_text(sec.page_content):
+                        if c.strip():
+                            chunks.append(c)
+                    
+            elif cell.cell_type == "code":
+                # Code (python or otherwise) – function/class boundaries are respected better
+                for c in self.code_splitter.split_text(src):
+                    if c.strip():
+                        chunks.append(c)
+        
+        return chunks
