@@ -11,7 +11,7 @@ import json
 import re
 import os, shutil
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
 CHAT_SESSIONS_DIR = os.path.join(os.path.dirname(__file__), "chat_sessions")
@@ -55,7 +55,7 @@ class ChatSessionManager:
     def list_chat_sessions(self) -> List[Dict[str, Any]]:
         """Return list of all chat sessions from chat-sessions.json"""
         try:
-            index_data = self._load_chats_index()
+            index_data = self._load_chat_sessions_index()
             sessions = index_data.get("sessions", [])
             # Sort by created_at, newest first
             sessions.sort(key=lambda x: x.get("created_at", ""), reverse=True)
@@ -96,9 +96,19 @@ class ChatSessionManager:
             # Extract the first user message
             first_message = ""
             for msg in chat_history:
-                if isinstance(msg, dict) and msg.get("role") == "user":
-                    first_message = msg.get("content", "").strip()
+                # Handle pydantic model objects
+                if hasattr(msg, 'type') and msg.type == "human":
+                    first_message = getattr(msg, 'body', getattr(msg, 'prompt', "")).strip()
                     break
+                # Handle dictionary format
+                elif isinstance(msg, dict):
+                    if msg.get("type") == "human":
+                        first_message = msg.get("body", msg.get("prompt", "")).strip()
+                        break
+                    elif msg.get("role") == "user":
+                        first_message = msg.get("content", "").strip()
+                        break
+                # Handle string format
                 elif isinstance(msg, str):
                     first_message = msg.strip()
                     break
@@ -151,13 +161,13 @@ class ChatSessionManager:
                 with open(chat_file, 'r', encoding='utf-8') as f:
                     existing_data = json.load(f)
                 existing_meta = existing_data.get("metadata", {})
-                metadata.update({
+                metadata = {
                     "title": existing_meta.get("title", self.generate_title(chat_history)),
                     "created_at": existing_meta.get("created_at", now),
                     "id": chat_id,
                     "modified_at": now,
                     "message_count": len(chat_history)
-                })
+                }
             
             # Save chat data
             chat_data = {

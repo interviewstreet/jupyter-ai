@@ -22,7 +22,7 @@ export function ChatSessions(): JSX.Element {
     if (!loadingSessions) {
       setLoadingSessions(true);
       try {
-        const sessions = await await AiService.getChatSessionsList();
+        const sessions = await AiService.getChatSessionsList();
         setChatSessions(sessions);
       } catch (error) {
         console.error('Error loading chat history:', error);
