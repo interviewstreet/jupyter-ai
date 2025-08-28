@@ -1,0 +1,63 @@
+{
+    "model_provider_id": "openai-chat-custom:gpt-4",
+    "embeddings_provider_id": "openai-custom:text-embedding-3-small",
+    "send_with_shift_enter": false,
+    "fields": {
+        "openai-chat-custom:gpt-4": {
+            "openai_api_base": "<provider_url>",
+            "default_headers": {
+                "x-portkey-config": "<portke_config>"
+            }
+        },
+        "openai-chat-custom:gpt-4o": {
+            "openai_api_base": "<provider_url>",
+            "default_headers": {
+                "x-portkey-config": "<portke_config>"
+            }
+        },
+        "openai-chat-custom:gpt-4o-mini": {
+            "openai_api_base": "<provider_url>",
+            "default_headers": {
+                "x-portkey-config": "<portke_config>"
+            }
+        },
+        "openai-chat-custom:gpt-4-turbo": {
+            "openai_api_base": "<provider_url>",
+            "default_headers": {
+                "x-portkey-config": "<portke_config>"
+            }
+        },
+        "openai-chat-custom:gpt-3.5-turbo": {
+            "openai_api_base": "<provider_url>",
+            "default_headers": {
+                "x-portkey-config": "<portke_config>"
+            }
+        },
+        "openai-chat-custom:chatgpt-4o-latest": {
+            "openai_api_base": "<provider_url>",
+            "default_headers": {
+                "x-portkey-config": "<portke_config>"
+            }
+        }
+    },
+    "api_keys": {
+        "OPENAI_API_KEY": "<token>"
+    },
+    "completions_model_provider_id": "openai-chat-custom:gpt-4",
+    "completions_fields": {
+        "openai-chat-custom:gpt-4": {
+            "openai_api_base": "<provider_url>",
+            "default_headers": {
+                "x-portkey-config": "<portke_config>"
+            }
+        }
+    },
+    "embeddings_fields": {
+        "openai-custom:text-embedding-3-small": {
+            "openai_api_base": "<provider_url>",
+            "default_headers": {
+                "x-portkey-config": "<portke_config>"
+            }
+        }
+    }
+}
