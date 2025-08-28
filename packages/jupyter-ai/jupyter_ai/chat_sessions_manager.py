@@ -22,9 +22,22 @@ class ChatSessionManager:
     
     def __init__(self, root_dir: str = None, log=None):
         self.log = log
-        self.current_chat_id = None
+        self._current_chat_id = None
         # Ensure chat_sessions directory exists
         os.makedirs(CHAT_SESSIONS_DIR, exist_ok=True)
+
+        # Clear all chats on startup
+        self.clear_all()
+
+    @property
+    def current_chat_id(self) -> str:
+        """Get the current chat ID"""
+        return self._current_chat_id
+
+    @current_chat_id.setter
+    def current_chat_id(self, chat_id: str) -> None:
+        """Set the current chat ID"""
+        self._current_chat_id = chat_id
     
     def clear_all(self):
         """Delete all chat files and clear chats directory"""

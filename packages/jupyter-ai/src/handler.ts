@@ -357,14 +357,31 @@ export namespace AiService {
     modified_at: string;
   };
 
+  export type ChatSessionsResponse = {
+    sessions: ChatSessionItem[];
+  };
+
   export async function getChatSessionsList(): Promise<ChatSessionItem[]> {
-    return requestAPI<ChatSessionItem[]>('chat-sessions');
+    const response = await requestAPI<ChatSessionsResponse>('chat-sessions');
+    return response.sessions;
   }
 
   export async function updateChatSession(chat_id: string): Promise<void> {
     return requestAPI<void>('chat-sessions', {
       method: 'POST',
-      body: JSON.stringify({ chat_id })
+      body: JSON.stringify({
+        action: 'load',
+        session_id: chat_id
+      })
+    });
+  }
+
+  export async function createNewChatSession(): Promise<void> {
+    return requestAPI<void>('chat-sessions', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'new'
+      })
     });
   }
 }

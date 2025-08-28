@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Menu, MenuItem, Typography } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import HistoryIcon from '@mui/icons-material/History';
 import { TooltippedIconButton } from './mui-extras/tooltipped-icon-button';
 import { AiService } from '../handler';
@@ -53,8 +54,19 @@ export function ChatSessions(): JSX.Element {
     }
   };
 
+  const handleNewChat = async () => {
+    try {
+      await AiService.createNewChatSession();
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+    }
+  };
+
   return (
     <>
+      <TooltippedIconButton onClick={handleNewChat} tooltip="New chat">
+        <AddIcon />
+      </TooltippedIconButton>
       <TooltippedIconButton
         onClick={handleSessionsClick}
         tooltip="Chat sessions"

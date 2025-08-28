@@ -316,3 +316,30 @@ class ListOptionsEntry(BaseModel):
 
 class ListOptionsResponse(BaseModel):
     options: list[ListOptionsEntry] = []
+
+
+# Chat session management models
+class ChatSessionItem(BaseModel):
+    """Represents a chat session item in the list"""
+    id: str
+    title: str
+    created_at: str
+    modified_at: str
+
+
+class ChatSessionsResponse(BaseModel):
+    """Response containing list of chat sessions"""
+    sessions: list[ChatSessionItem]
+
+
+class ChatSessionRequest(BaseModel):
+    """Request for chat session operations"""
+    action: Literal["new", "load", "save"]
+    session_id: Optional[str] = None
+
+
+class ChatSessionLoadResponse(BaseModel):
+    """Response when loading a chat session"""
+    session_id: str
+    metadata: dict[str, Any]
+    chat_history: list[dict[str, Any]]

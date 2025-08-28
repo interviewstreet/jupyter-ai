@@ -3,7 +3,7 @@ import { Box } from '@mui/system';
 import { Button, IconButton, Stack } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import AddIcon from '@mui/icons-material/Add';
+
 import type { Awareness } from 'y-protocols/awareness';
 import type { IThemeManager } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
@@ -257,19 +257,7 @@ export function Chat(props: ChatProps): JSX.Element {
                     )}
                     {view === ChatView.Chat ? (
                       <Box sx={{ display: 'flex' }}>
-                        {!showWelcomeMessage && (
-                          <>
-                            <TooltippedIconButton
-                              onClick={() =>
-                                props.chatHandler.sendMessage({ type: 'clear' })
-                              }
-                              tooltip="New chat"
-                            >
-                              <AddIcon />
-                            </TooltippedIconButton>
-                            <ChatSessions />
-                          </>
-                        )}
+                        {!showWelcomeMessage && <ChatSessions />}
                         {showSettingsButton && (
                           <IconButton onClick={() => openSettingsView()}>
                             <SettingsIcon />
