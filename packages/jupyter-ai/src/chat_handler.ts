@@ -130,6 +130,13 @@ export class ChatHandler implements IDisposable {
     // in-place so consumer React components re-render.
     switch (newMessage.type) {
       case 'connection':
+        // Handle connection messages that update chat history (e.g., after loading a session)
+        this._messages = newMessage.history.messages;
+        this._pendingMessages = newMessage.history.pending_messages;
+        console.log('Updated chat history from connection message:', {
+          messages: this._messages.length,
+          pending: this._pendingMessages.length
+        });
         break;
       case 'clear':
         if (newMessage.targets) {

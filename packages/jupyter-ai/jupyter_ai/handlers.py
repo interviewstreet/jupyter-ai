@@ -4,14 +4,16 @@ import time
 import uuid
 from asyncio import AbstractEventLoop, Event
 from dataclasses import asdict
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, cast
 
 import tornado
 from jupyter_ai.chat_handlers import BaseChatHandler, SlashCommandRoutingType
 from jupyter_ai.config_manager import ConfigManager, KeyEmptyError, WriteConflictError
 from jupyter_ai.context_providers import BaseCommandContextProvider, ContextCommand
+from jupyter_ai.history import HUMAN_MSG_ID_KEY
 from jupyter_server.base.handlers import APIHandler as BaseAPIHandler
 from jupyter_server.base.handlers import JupyterHandler
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import ValidationError
 from tornado import web, websocket
 from tornado.web import HTTPError
@@ -728,3 +730,183 @@ class AutocompleteOptionsHandler(BaseAPIHandler):
         return ListOptionsEntry(
             id=id, description=description, label=label, only_start=only_start
         )
+
+class ChatSessionsHandler(BaseAPIHandler):
+    """API handler for managing chat sessions"""
+
+    @property
+    def chat_session_manager(self):
+        return self.settings["jai_chat_session_manager"]
+
+    @property
+    def chat_history(self) -> list[ChatMessage]:
+        return self.settings["chat_history"]
+
+    @chat_history.setter
+    def chat_history(self, new_history):
+        self.settings["chat_history"] = new_history
+
+    @property
+    def llm_chat_memory(self):
+        return self.settings["llm_chat_memory"]
+
+    @web.authenticated
+    def get(self):
+        """Return list of all chat sessions"""
+        try:
+            sessions_data = self.chat_session_manager.list_chat_sessions()
+            sessions = [ChatSessionItem(**session) for session in sessions_data]
+            response = ChatSessionsResponse(sessions=sessions)
+            self.finish(response.model_dump_json())
+        except Exception as e:
+            self.log.exception(e)
+            raise HTTPError(500, "Error retrieving chat sessions") from e
+
+    @web.authenticated
+    def post(self):
+        """Handle chat session operations: new, load, save"""
+        try:
+            request_data = ChatSessionRequest(**self.get_json_body())
+            
+            if request_data.action == "new":
+                # Save current chat before creating new one if there are messages
+                if self.chat_history and len(self.chat_history) >= 2:
+                    saved_chat_id = self.chat_session_manager.save(
+                        self.chat_history, 
+                        self.chat_session_manager.current_chat_id
+                    )
+                    self.log.info(f"[jupyter-ai] Saved current chat before creating new: {saved_chat_id}")
+                
+                
+                # Clear current chat state
+                self.chat_history.clear()
+                self.settings["pending_messages"].clear()
+                self.llm_chat_memory.clear()
+                self.chat_session_manager.current_chat_id = None
+                
+                # Use existing broadcast mechanism
+                self._broadcast_clear_and_help()
+                
+                self.set_status(200)
+                self.finish(json.dumps({"status": "new_chat_created"}))
+                
+            elif request_data.action == "load" and request_data.session_id:
+                # Save current chat before loading new one if there are meaningful messages
+                if self.chat_history and len(self.chat_history) >= 2:
+                    saved_chat_id = self.chat_session_manager.save(
+                        self.chat_history, 
+                        self.chat_session_manager.current_chat_id
+                    )
+                    self.log.info(f"[jupyter-ai] Saved current chat before loading: {saved_chat_id}")
+                
+                # Clear current state
+                self.chat_history.clear()
+                self.settings["pending_messages"].clear()
+                self.llm_chat_memory.clear()
+                
+                # Use ChatSessionManager to reconstruct the session
+                reconstruction = self.chat_session_manager.reconstruct_chat_session(request_data.session_id)
+                if not reconstruction:
+                    raise HTTPError(404, "Chat session not found")
+                
+                # Load reconstructed messages and LLM memory
+                self.chat_history.extend(reconstruction["messages"])
+                self._populate_llm_memory(reconstruction["llm_memory_pairs"])
+                
+                # Set current chat ID
+                self.chat_session_manager.current_chat_id = request_data.session_id
+                self.log.info(f"[jupyter-ai] Set current chat ID to: {request_data.session_id}")
+                
+                # Broadcast updated history to all clients (refresh UI)
+                self.log.info(f"[jupyter-ai] Broadcasting loaded chat history with {len(self.chat_history)} messages to all clients")
+                self._broadcast_chat_history()
+                
+                response = ChatSessionLoadResponse(
+                    session_id=request_data.session_id,
+                    metadata=reconstruction["metadata"],
+                    chat_history=[msg.model_dump() for msg in reconstruction["messages"]]
+                )
+                self.finish(response.model_dump_json())
+                
+            elif request_data.action == "save":
+                # Save current chat
+                if self.chat_history and len(self.chat_history) >= 2:
+                    chat_id = self.chat_session_manager.save(
+                        self.chat_history, 
+                        self.chat_session_manager.current_chat_id
+                    )
+                    # Update current chat ID if it was a new save
+                    if not self.chat_session_manager.current_chat_id:
+                        self.chat_session_manager.current_chat_id = chat_id
+                    self.finish(json.dumps({"status": "saved", "chat_id": chat_id}))
+                else:
+                    self.finish(json.dumps({"status": "no_chat_to_save"}))
+            else:
+                raise HTTPError(400, "Invalid action or missing session_id")
+                
+        except ValidationError as e:
+            self.log.exception(e)
+            raise HTTPError(400, str(e)) from e
+        except Exception as e:
+            self.log.exception(e)
+            raise HTTPError(500, "Error processing chat session request") from e
+
+    def _populate_llm_memory(self, llm_memory_pairs: List[Dict[str, str]]):
+        """Populate LLM memory with conversation pairs using proper metadata"""
+        try:
+            for pair in llm_memory_pairs:
+                try:
+                    # Create properly formatted messages for LLM memory
+                    human_msg = HumanMessage(content=pair["human"])
+                    human_msg.additional_kwargs[HUMAN_MSG_ID_KEY] = pair["human_id"]
+                    
+                    ai_msg = AIMessage(content=pair["ai"])
+                    ai_msg.additional_kwargs[HUMAN_MSG_ID_KEY] = pair["human_id"]
+                    
+                    # Add to LLM memory
+                    self.llm_chat_memory.add_message(human_msg)
+                    self.llm_chat_memory.add_message(ai_msg)
+                except Exception as e:
+                    self.log.warning(f"[jupyter-ai] Could not reconstruct LLM memory pair: {e}")
+                    continue
+            
+            self.log.info(f"[jupyter-ai] Populated LLM memory with {len(llm_memory_pairs)} conversation pairs")
+            
+        except Exception as e:
+            self.log.error(f"[jupyter-ai] Error populating LLM memory: {e}")
+            self.log.exception(e)
+
+    def _broadcast_clear_and_help(self):
+        """Use existing broadcast mechanism to clear chat and send help"""
+        try:
+            # Get the first RootChatHandler to use its broadcast mechanism
+            root_chat_handlers = self.settings.get("jai_root_chat_handlers", {})
+            if root_chat_handlers:
+                first_handler = next(iter(root_chat_handlers.values()))
+                if first_handler:
+                    first_handler.broadcast_message(ClearMessage())
+                    default_handler = self.settings.get("jai_chat_handlers", {}).get("default")
+                    if default_handler and hasattr(default_handler, 'send_help_message'):
+                        default_handler.send_help_message()
+        except Exception as e:
+            self.log.warning(f"[jupyter-ai] Could not broadcast clear and help: {e}")
+
+    def _broadcast_chat_history(self):
+        """Use existing broadcast mechanism to update chat history"""
+        try:
+            # Get the first RootChatHandler to use its broadcast mechanism
+            root_chat_handlers = self.settings.get("jai_root_chat_handlers", {})
+            for client_id, client in root_chat_handlers.items():
+                if client:
+                    connection_message = ConnectionMessage(
+                        client_id=client_id,
+                        history=ChatHistory(
+                            messages=self.chat_history,
+                            pending_messages=self.settings.get("pending_messages", [])
+                        )
+                    )
+                    client.broadcast_message(connection_message)
+            
+            self.log.info(f"[jupyter-ai] Successfully broadcasted chat history to {len(root_chat_handlers)} clients")
+        except Exception as e:
+            self.log.warning(f"[jupyter-ai] Could not broadcast chat history: {e}")

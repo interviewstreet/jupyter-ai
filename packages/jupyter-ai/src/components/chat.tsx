@@ -32,7 +32,6 @@ import {
 } from '../contexts/active-cell-context';
 import { UserContextProvider, useUserContext } from '../contexts/user-context';
 import { ScrollContainer } from './scroll-container';
-import { TooltippedIconButton } from './mui-extras/tooltipped-icon-button';
 import { TelemetryContextProvider } from '../contexts/telemetry-context';
 
 type ChatBodyProps = {

@@ -6,6 +6,7 @@ Public Functions
 - list_chat_sessions() -> List[Dict[str, Any]] - Return list of all chat sessions from chat-sessions.json
 - generate_title(chat_history: List, llm=None) -> str - Generate a simple local title for the chat without LLM.
 - save(chat_history: List, chat_id: str = None, llm=None) -> str - Save chat history to file
+- reconstruct_chat_session(session_id: str) -> Optional[Dict[str, Any]] - Reconstruct chat session with properly formatted messages and LLM memory pairs.
 """
 import json
 import re
@@ -141,6 +142,68 @@ class ChatSessionManager:
             self.log.warning(f"[jupyter-ai] Could not generate local title: {e}")
             self.log.exception(e)
             return "Chat Session"
+    
+    def reconstruct_chat_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Load and reconstruct a chat session with properly formatted messages and LLM memory pairs.
+        Returns dict with 'messages' and 'llm_memory_pairs' keys, or None if session not found.
+        """
+        try:
+            session_data = self.load_chat_session(session_id)
+            if not session_data:
+                return None
+            
+            loaded_history = session_data.get("chat_history", [])
+            reconstructed_messages = []
+            llm_memory_pairs = []
+            human_messages = {}
+            
+            # Import here to avoid circular imports
+            from .models import HumanChatMessage, AgentChatMessage, AgentStreamMessage
+            
+            # First pass: reconstruct messages and collect human messages
+            for msg_data in loaded_history:
+                if not isinstance(msg_data, dict):
+                    continue
+                    
+                try:
+                    msg_type = msg_data.get("type")
+                    if msg_type == "human":
+                        message = HumanChatMessage(**msg_data)
+                        reconstructed_messages.append(message)
+                        human_messages[message.id] = message.prompt
+                    elif msg_type == "agent":
+                        message = AgentChatMessage(**msg_data)
+                        reconstructed_messages.append(message)
+                    elif msg_type == "agent-stream":
+                        message = AgentStreamMessage(**msg_data)
+                        reconstructed_messages.append(message)
+                    else:
+                        self.log.warning(f"[jupyter-ai] Unknown message type: {msg_type}")
+                except Exception as e:
+                    self.log.warning(f"[jupyter-ai] Could not reconstruct message: {e}")
+                    continue
+            
+            # Second pass: extract LLM memory pairs from reconstructed messages
+            for message in reconstructed_messages:
+                if hasattr(message, 'type') and message.type in ["agent", "agent-stream"]:
+                    if hasattr(message, 'reply_to') and message.reply_to in human_messages:
+                        llm_memory_pairs.append({
+                            "human": human_messages[message.reply_to],
+                            "ai": message.body,
+                            "human_id": message.reply_to
+                        })
+            
+            return {
+                "messages": reconstructed_messages,
+                "llm_memory_pairs": llm_memory_pairs,
+                "metadata": session_data.get("metadata", {})
+            }
+            
+        except Exception as e:
+            self.log.error(f"[jupyter-ai] Error reconstructing chat session {session_id}: {e}")
+            self.log.exception(e)
+            return None
         
     def save(self, chat_history: List, chat_id: str = None) -> str:
         """Save chat history to file"""
