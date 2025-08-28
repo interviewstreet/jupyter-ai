@@ -24,9 +24,11 @@ from .handlers import (
     ModelProviderHandler,
     RootChatHandler,
     SlashCommandsInfoHandler,
+    ChatSessionsHandler
 )
 from .history import BoundedChatHistory
 from .oauth_token_manager import OAuthTokenManager
+from .chat_session_manager import ChatSessionManager
 
 JUPYTERNAUT_AVATAR_ROUTE = JupyternautPersona.avatar_route
 JUPYTERNAUT_AVATAR_PATH = str(
@@ -51,6 +53,7 @@ class AiExtension(ExtensionApp):
     handlers = [  # type:ignore[assignment]
         (r"api/ai/api_keys/(?P<api_key_name>\w+)", ApiKeysHandler),
         (r"api/ai/config/?", GlobalConfigHandler),
+        (r"api/ai/chat-sessions/?", ChatSessionsHandler),
         (r"api/ai/chats/?", RootChatHandler),
         (r"api/ai/chats/history?", ChatHistoryHandler),
         (r"api/ai/chats/slash_commands?", SlashCommandsInfoHandler),
@@ -251,6 +254,13 @@ class AiExtension(ExtensionApp):
             allowed_models=self.allowed_models,
             blocked_models=self.blocked_models,
             defaults=defaults,
+        )
+
+        # Initialize chat history manager
+        self.log.info("[jupyter-ai] Creating chat sessions manager instance...")
+        self.settings["jai_chat_session_manager"] = ChatSessionManager(
+            root_dir=self.serverapp.root_dir,
+            log=self.log
         )
 
         # Initialize OAuth token manager
