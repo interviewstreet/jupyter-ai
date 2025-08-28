@@ -15,6 +15,7 @@ import { ChatMessages } from './chat-messages';
 import { PendingMessages } from './pending-messages';
 import { ChatInput } from './chat-input';
 import { ChatSettings } from './chat-settings';
+import { ChatSessions } from './chat-sessions';
 import { AiService } from '../handler';
 import { SelectionContextProvider } from '../contexts/selection-context';
 import { SelectionWatcher } from '../selection-watcher';
@@ -257,14 +258,17 @@ export function Chat(props: ChatProps): JSX.Element {
                     {view === ChatView.Chat ? (
                       <Box sx={{ display: 'flex' }}>
                         {!showWelcomeMessage && (
-                          <TooltippedIconButton
-                            onClick={() =>
-                              props.chatHandler.sendMessage({ type: 'clear' })
-                            }
-                            tooltip="New chat"
-                          >
-                            <AddIcon />
-                          </TooltippedIconButton>
+                          <>
+                            <TooltippedIconButton
+                              onClick={() =>
+                                props.chatHandler.sendMessage({ type: 'clear' })
+                              }
+                              tooltip="New chat"
+                            >
+                              <AddIcon />
+                            </TooltippedIconButton>
+                            <ChatSessions />
+                          </>
                         )}
                         {showSettingsButton && (
                           <IconButton onClick={() => openSettingsView()}>

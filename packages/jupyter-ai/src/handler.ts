@@ -349,4 +349,22 @@ export namespace AiService {
         encodeURIComponent(partialCommand)
     );
   }
+  //HackerRank Changes
+  export type ChatSessionItem = {
+    id: string;
+    title: string;
+    created_at: string;
+    modified_at: string;
+  };
+
+  export async function getChatSessionsList(): Promise<ChatSessionItem[]> {
+    return requestAPI<ChatSessionItem[]>('chat-sessions');
+  }
+
+  export async function updateChatSession(chat_id: string): Promise<void> {
+    return requestAPI<void>('chat-sessions', {
+      method: 'POST',
+      body: JSON.stringify({ chat_id })
+    });
+  }
 }
