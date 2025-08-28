@@ -28,7 +28,7 @@ from .handlers import (
 )
 from .history import BoundedChatHistory
 from .oauth_token_manager import OAuthTokenManager
-from .chat_session_manager import ChatSessionManager
+from .chat_sessions_manager import ChatSessionManager
 
 JUPYTERNAUT_AVATAR_ROUTE = JupyternautPersona.avatar_route
 JUPYTERNAUT_AVATAR_PATH = str(
