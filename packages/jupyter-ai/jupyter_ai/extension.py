@@ -26,6 +26,8 @@ from .handlers import (
     SlashCommandsInfoHandler,
 )
 from .history import BoundedChatHistory
+from .oauth_token_manager import OAuthTokenManager
+from .utils import is_dev
 
 JUPYTERNAUT_AVATAR_ROUTE = JupyternautPersona.avatar_route
 JUPYTERNAUT_AVATAR_PATH = str(
@@ -252,6 +254,13 @@ class AiExtension(ExtensionApp):
             defaults=defaults,
         )
 
+        # Initialize OAuth token manager
+        self.log.info("[jupyter-ai] Creating OAuth token manager instance...")
+        self.oauth_manager = OAuthTokenManager(
+            config_manager=self.settings["jai_config_manager"],
+            log=self.log
+        )
+
         # Expose a subset of settings as read-only to the providers
         BaseProvider.server_settings = types.MappingProxyType(
             self.serverapp.web_app.settings
@@ -305,11 +314,36 @@ class AiExtension(ExtensionApp):
         # initialize context providers
         self._init_context_provders()
 
+        # HR Change- auto-learn from project root directory  
+        self._auto_learn_on_startup()
+
         # show help message at server start
         self._show_help_message()
 
+        # Initialize OAuth manager asynchronously with error handling       
+        async def init_oauth_with_error_handling():
+            try:
+                await self.oauth_manager.init()
+            except Exception as e:
+                self.log.error(f"[jupyter-ai] Failed to initialize OAuth manager: {e}")
+                self.log.exception(e)
+        if not is_dev():
+            self.log.info("[jupyter-ai] Scheduling OAuth manager initialization task...")
+            loop.create_task(init_oauth_with_error_handling())
+
         latency_ms = round((time.time() - start) * 1000)
         self.log.info(f"Initialized Jupyter AI server extension in {latency_ms} ms.")
+
+    def _auto_learn_on_startup(self):
+        """Trigger auto-learning on extension startup"""
+        try:
+            learn_handler = self.settings["jai_chat_handlers"].get("/learn")
+            if learn_handler:
+                loop = self.settings["jai_event_loop"]
+                loop.create_task(learn_handler.auto_learn_on_startup())
+        except Exception as e:
+            self.log.error(f"[jupyter-ai] Failed to auto learn on startup: {e}")
+            self.log.exception(e)
 
     def _show_help_message(self):
         """
@@ -343,6 +377,12 @@ class AiExtension(ExtensionApp):
         Private method that defines the cleanup code to run when the server is
         stopping.
         """
+        # Cleanup OAuth manager
+        if hasattr(self, 'oauth_manager') and self.oauth_manager:
+            self.log.info("Disposing OAuth manager.")
+            self.oauth_manager.dispose()
+            self.log.debug("OAuth manager disposed.")
+
         if "dask_client_future" in self.settings:
             dask_client: DaskClient = await self.settings["dask_client_future"]
             self.log.info("Closing Dask client.")

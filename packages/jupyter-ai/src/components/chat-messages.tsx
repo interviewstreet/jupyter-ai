@@ -208,21 +208,38 @@ export function ChatMessages(props: ChatMessagesProps): JSX.Element {
 
   return (
     <Box
-      sx={{
-        '& > :not(:last-child)': {
-          borderBottom: '1px solid var(--jp-border-color2)'
-        }
-      }}
+    // sx={{
+    //   '& > :not(:last-child)': {
+    //     borderBottom: '1px solid var(--jp-border-color2)'
+    //   }
+    // }}
     >
       {sortedMessages.map(message => {
+        const isHuman = message.type === 'human';
         return (
-          <Box key={message.id} sx={{ padding: 4 }}>
-            <ChatMessageHeader
+          <Box
+            key={message.id}
+            sx={{
+              mb: 2,
+              p: 2,
+              fontSize: '0.95rem',
+              ...(isHuman
+                ? {
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: '#EAEAEA',
+                    backgroundColor: '#FAFAFA',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                  }
+                : {})
+            }}
+          >
+            {/* <ChatMessageHeader
               message={message}
               timestamp={timestamps[message.id]}
               chatHandler={props.chatHandler}
               sx={{ marginBottom: 3 }}
-            />
+            /> */}
             <RendermimeMarkdown
               markdownStr={message.body}
               rmRegistry={props.rmRegistry}
@@ -231,9 +248,9 @@ export function ChatMessages(props: ChatMessagesProps): JSX.Element {
                 message.type === 'agent-stream' ? !!message.complete : true
               }
             />
-            {props.messageFooter && (
+            {/* {props.messageFooter && (
               <props.messageFooter.component message={message} />
-            )}
+            )} */}
           </Box>
         );
       })}

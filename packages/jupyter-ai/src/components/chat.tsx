@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Box } from '@mui/system';
 import { Button, IconButton, Stack } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -105,7 +105,7 @@ function ChatBody({
   useEffect(() => {
     function onHistoryChange(_: unknown, history: AiService.ChatHistory) {
       setMessages([...history.messages]);
-      setPendingMessages([...history.pending_messages]);
+        setPendingMessages([...history.pending_messages]);
       setPersonaName(getPersonaName(history.messages));
     }
 
@@ -166,7 +166,7 @@ function ChatBody({
 
   return (
     <>
-      <ScrollContainer sx={{ flexGrow: 1 }}>
+      <ScrollContainer sx={{ flexGrow: 1, padding: 2 }}>
         <ChatMessages
           messages={messages}
           chatHandler={chatHandler}
@@ -179,13 +179,6 @@ function ChatBody({
         chatHandler={chatHandler}
         focusInputSignal={focusInputSignal}
         streamingReplyHere={streamingReplyHere}
-        sx={{
-          paddingLeft: 4,
-          paddingRight: 4,
-          paddingTop: 3.5,
-          paddingBottom: 0,
-          borderTop: '1px solid var(--jp-border-color1)'
-        }}
         sendWithShiftEnter={sendWithShiftEnter}
         personaName={personaName}
       />
@@ -217,6 +210,9 @@ enum ChatView {
 export function Chat(props: ChatProps): JSX.Element {
   const [view, setView] = useState<ChatView>(props.chatView || ChatView.Chat);
   const [showWelcomeMessage, setShowWelcomeMessage] = useState<boolean>(false);
+  const showSettingsButton = useMemo(() => {
+    return !!(localStorage.getItem('show-setting') === 'true');
+  }, []);
 
   const openSettingsView = () => {
     setShowWelcomeMessage(false);
@@ -270,9 +266,11 @@ export function Chat(props: ChatProps): JSX.Element {
                             <AddIcon />
                           </TooltippedIconButton>
                         )}
-                        <IconButton onClick={() => openSettingsView()}>
-                          <SettingsIcon />
-                        </IconButton>
+                        {showSettingsButton && (
+                          <IconButton onClick={() => openSettingsView()}>
+                            <SettingsIcon />
+                          </IconButton>
+                        )}
                       </Box>
                     ) : (
                       <Box />

@@ -28,7 +28,7 @@ dependencies = [
     # pydantic <2.10.0 raises a "protected namespaces" error in JAI
     # - See: https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.protected_namespaces
     "pydantic>=2.10.0,<3",
-    "jupyter_ai_magics>=2.31.6,<3.0.0",
+    "jupyter_ai_magics[all]>=2.31.6,<3.0.0",
     "dask[distributed]",
     # faiss-cpu is not distributed by the official repo.
     # v1.8.0.post0 should be excluded as it lacks macOS x86 wheels.
@@ -36,6 +36,9 @@ dependencies = [
     # traitlets>=5.6 is required in JL4
     "traitlets>=5.6",
     "deepmerge>=2.0,<3",
+    "aiohttp>=3.8.0,<4.0.0",
+    "pypdf",
+    "arxiv",
 ]
 
 dynamic = ["version", "description", "authors", "urls", "keywords"]

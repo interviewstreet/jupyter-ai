@@ -1,0 +1,35 @@
+{
+  "provider": "openai-chat-custom",
+  "models": [
+    {
+      "id": "gpt-4",
+      "label": "GPT-4",
+      "description": "Most capable model for complex, multi-step tasks"
+    },
+    {
+      "id": "gpt-4o",
+      "label": "GPT-4o", 
+      "description": "High-intelligence flagship model for complex, multi-step tasks"
+    },
+    {
+      "id": "gpt-4o-mini",
+      "label": "GPT-4o Mini",
+      "description": "Affordable and intelligent small model for fast, lightweight tasks"
+    },
+    {
+      "id": "gpt-4-turbo",
+      "label": "GPT-4 Turbo",
+      "description": "The latest GPT-4 Turbo model with vision capabilities"
+    },
+    {
+      "id": "gpt-3.5-turbo",
+      "label": "GPT-3.5 Turbo",
+      "description": "Fast, inexpensive model for simple tasks"
+    },
+    {
+      "id": "chatgpt-4o-latest",
+      "label": "ChatGPT-4o Latest",
+      "description": "Dynamic model continuously updated to the current version of ChatGPT"
+    }
+  ]
+}
