@@ -330,7 +330,7 @@ class RootChatHandler(JupyterHandler, websocket.WebSocketHandler):
             self.pending_messages.clear()
             self.llm_chat_memory.clear()
             self.broadcast_message(ClearMessage())
-            self.settings["jai_chat_handlers"]["default"].send_help_message()
+            # self.settings["jai_chat_handlers"]["default"].send_help_message()  # Commented out to stop sending help message
             return
 
         # otherwise, clear a single message
@@ -899,8 +899,9 @@ class ChatSessionsHandler(BaseAPIHandler):
                 if first_handler and hasattr(first_handler, 'broadcast_message'):
                     first_handler.broadcast_message(ClearMessage())
                     default_handler = self.settings.get("jai_chat_handlers", {}).get("default")
-                    if default_handler and hasattr(default_handler, 'send_help_message'):
-                        default_handler.send_help_message()
+                    # Commented out to stop sending help message
+                    # if default_handler and hasattr(default_handler, 'send_help_message'):
+                        # default_handler.send_help_message()  
         except Exception as e:
             self.log.error(f"[jupyter-ai] Could not broadcast clear and help: {e}")
             self.log.exception(e)

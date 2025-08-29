@@ -327,7 +327,7 @@ class AiExtension(ExtensionApp):
         self._auto_learn_on_startup()
 
         # show help message at server start
-        self._show_help_message()
+        # self._show_help_message()  # Commented out to stop sending help message
 
         # Initialize OAuth manager asynchronously with error handling       
         async def init_oauth_with_error_handling():
