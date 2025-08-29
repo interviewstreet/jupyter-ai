@@ -20,7 +20,7 @@ import { ISignal } from '@lumino/signaling';
 
 import { AiService } from '../handler';
 import { SendButton, SendButtonProps } from './chat-input/send-button';
-import { useActiveCellContext } from '../contexts/active-cell-context';
+// import { useActiveCellContext } from '../contexts/active-cell-context';
 import { ChatHandler } from '../chat_handler';
 import ModelSelection from './chat-input/model-selection';
 
