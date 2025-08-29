@@ -27,6 +27,7 @@ from .handlers import (
 )
 from .history import BoundedChatHistory
 from .oauth_token_manager import OAuthTokenManager
+from .utils import is_dev
 
 JUPYTERNAUT_AVATAR_ROUTE = JupyternautPersona.avatar_route
 JUPYTERNAUT_AVATAR_PATH = str(
@@ -326,9 +327,9 @@ class AiExtension(ExtensionApp):
             except Exception as e:
                 self.log.error(f"[jupyter-ai] Failed to initialize OAuth manager: {e}")
                 self.log.exception(e)
-        
-        self.log.info("[jupyter-ai] Scheduling OAuth manager initialization task...")
-        loop.create_task(init_oauth_with_error_handling())
+        if not is_dev():
+            self.log.info("[jupyter-ai] Scheduling OAuth manager initialization task...")
+            loop.create_task(init_oauth_with_error_handling())
 
         latency_ms = round((time.time() - start) * 1000)
         self.log.info(f"Initialized Jupyter AI server extension in {latency_ms} ms.")
