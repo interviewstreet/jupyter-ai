@@ -389,11 +389,12 @@ class RootChatHandler(JupyterHandler, websocket.WebSocketHandler):
         default = self.chat_handlers["default"]
         # Split on any whitespace, either spaces or newlines
         maybe_command = message.body.split(None, 1)[0]
-        is_command = (
-            message.body.startswith("/")
-            and maybe_command in self.chat_handlers.keys()
-            and maybe_command != "default"
-        )
+        # is_command = (
+        #     message.body.startswith("/")
+        #     and maybe_command in self.chat_handlers.keys()
+        #     and maybe_command != "default"
+        # )
+        is_command = False # Remove the support for Slash Commands
         command = maybe_command if is_command else "default"
 
         start = time.time()
@@ -591,39 +592,43 @@ class SlashCommandsInfoHandler(BaseAPIHandler):
     @web.authenticated
     def get(self):
         response = ListSlashCommandsResponse()
+        # Return empty response - no slash commands supported
+        self.finish(response.model_dump_json())
+        return
+
 
         # if no selected LLM, return an empty response
-        if not self.config_manager.lm_provider:
-            self.finish(response.model_dump_json())
-            return
+        # if not self.config_manager.lm_provider:
+        #     self.finish(response.model_dump_json())
+        #     return
 
-        for id, chat_handler in self.chat_handlers.items():
-            # filter out any chat handler that is not a slash command
-            if (
-                id == "default"
-                or chat_handler.routing_type.routing_method != "slash_command"
-            ):
-                continue
+        # for id, chat_handler in self.chat_handlers.items():
+        #     # filter out any chat handler that is not a slash command
+        #     if (
+        #         id == "default"
+        #         or chat_handler.routing_type.routing_method != "slash_command"
+        #     ):
+        #         continue
 
-            # hint the type of this attribute
-            routing_type: SlashCommandRoutingType = chat_handler.routing_type
+        #     # hint the type of this attribute
+        #     routing_type: SlashCommandRoutingType = chat_handler.routing_type
 
-            # filter out any chat handler that is unsupported by the current LLM
-            if (
-                "/" + routing_type.slash_id
-                in self.config_manager.lm_provider.unsupported_slash_commands
-            ):
-                continue
+        #     # filter out any chat handler that is unsupported by the current LLM
+        #     if (
+        #         "/" + routing_type.slash_id
+        #         in self.config_manager.lm_provider.unsupported_slash_commands
+        #     ):
+        #         continue
 
-            response.slash_commands.append(
-                ListSlashCommandsEntry(
-                    slash_id=routing_type.slash_id, description=chat_handler.help
-                )
-            )
+        #     response.slash_commands.append(
+        #         ListSlashCommandsEntry(
+        #             slash_id=routing_type.slash_id, description=chat_handler.help
+        #         )
+        #     )
 
-        # sort slash commands by slash id and deliver the response
-        response.slash_commands.sort(key=lambda sc: sc.slash_id)
-        self.finish(response.model_dump_json())
+        # # sort slash commands by slash id and deliver the response
+        # response.slash_commands.sort(key=lambda sc: sc.slash_id)
+        # self.finish(response.model_dump_json())
 
 
 class AutocompleteOptionsHandler(BaseAPIHandler):
@@ -676,34 +681,37 @@ class AutocompleteOptionsHandler(BaseAPIHandler):
         self.finish(response.model_dump_json())
 
     def _get_slash_command_options(self) -> list[ListOptionsEntry]:
-        options = []
-        for id, chat_handler in self.chat_handlers.items():
-            # filter out any chat handler that is not a slash command
-            if id == "default" or not isinstance(
-                chat_handler.routing_type, SlashCommandRoutingType
-            ):
-                continue
+        # Return empty list - no slash commands supported
+        return []
 
-            routing_type = chat_handler.routing_type
+        # options = []
+        # for id, chat_handler in self.chat_handlers.items():
+        #     # filter out any chat handler that is not a slash command
+        #     if id == "default" or not isinstance(
+        #         chat_handler.routing_type, SlashCommandRoutingType
+        #     ):
+        #         continue
 
-            # filter out any chat handler that is unsupported by the current LLM
-            if (
-                not routing_type.slash_id
-                or "/" + routing_type.slash_id
-                in self.config_manager.lm_provider.unsupported_slash_commands
-            ):
-                continue
+        #     routing_type = chat_handler.routing_type
 
-            options.append(
-                self._make_autocomplete_option(
-                    id="/" + routing_type.slash_id,
-                    description=chat_handler.help,
-                    only_start=True,
-                    requires_arg=False,
-                )
-            )
-        options.sort(key=lambda opt: opt.id)
-        return options
+        #     # filter out any chat handler that is unsupported by the current LLM
+        #     if (
+        #         not routing_type.slash_id
+        #         or "/" + routing_type.slash_id
+        #         in self.config_manager.lm_provider.unsupported_slash_commands
+        #     ):
+        #         continue
+
+        #     options.append(
+        #         self._make_autocomplete_option(
+        #             id="/" + routing_type.slash_id,
+        #             description=chat_handler.help,
+        #             only_start=True,
+        #             requires_arg=False,
+        #         )
+        #     )
+        # options.sort(key=lambda opt: opt.id)
+        # return options
 
     def _get_context_provider_options(self) -> list[ListOptionsEntry]:
         options = [

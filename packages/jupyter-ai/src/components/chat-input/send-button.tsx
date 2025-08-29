@@ -10,15 +10,15 @@ import { useActiveCellContext } from '../../contexts/active-cell-context';
 import { useSelectionContext } from '../../contexts/selection-context';
 import { AiService } from '../../handler';
 
-const FIX_TOOLTIP = '/fix requires an active code cell with an error';
+// const FIX_TOOLTIP = '/fix requires an active code cell with an error';
 
 export type SendButtonProps = {
   onSend: (selection?: AiService.Selection) => unknown;
   onStop: () => unknown;
   sendWithShiftEnter: boolean;
-  currSlashCommand: string | null;
+  // currSlashCommand: string | null;
   inputExists: boolean;
-  activeCellHasError: boolean;
+  // activeCellHasError: boolean;
   /**
    * Whether the backend is streaming a reply to any message sent by the current
    * user.
@@ -41,29 +41,29 @@ export function SendButton(props: SendButtonProps): JSX.Element {
     setMenuOpen(false);
   }, []);
 
-  let action: 'send' | 'stop' | 'fix' = props.inputExists
+  const action: 'send' | 'stop' | 'fix' = props.inputExists
     ? 'send'
     : props.streamingReplyHere
     ? 'stop'
     : 'send';
-  if (props.currSlashCommand === '/fix') {
-    action = 'fix';
-  }
+  // if (props.currSlashCommand === '/fix') {
+  //   action = 'fix';
+  // }
 
   let disabled = false;
   if (action === 'send' && !props.inputExists) {
     disabled = true;
   }
-  if (action === 'fix' && !props.activeCellHasError) {
-    disabled = true;
-  }
+  // if (action === 'fix' && !props.activeCellHasError) {
+  //   disabled = true;
+  // }
 
   const includeSelectionDisabled = !(activeCell.exists || textSelection);
 
   const includeSelectionTooltip =
-    action === 'fix'
-      ? FIX_TOOLTIP
-      : textSelection
+    // action === 'fix'
+    //   ? FIX_TOOLTIP :
+    textSelection
       ? `${textSelection.text.split('\n').length} lines selected`
       : activeCell.exists
       ? 'Code from 1 active cell'
@@ -74,9 +74,8 @@ export function SendButton(props: SendButtonProps): JSX.Element {
     : 'Send message (ENTER)';
 
   const tooltip =
-    action === 'fix' && !props.activeCellHasError
-      ? FIX_TOOLTIP
-      : action === 'stop'
+    // action === 'fix' && !props.activeCellHasError ? FIX_TOOLTIP :
+    action === 'stop'
       ? 'Stop streaming'
       : !props.inputExists
       ? 'Message must not be empty'

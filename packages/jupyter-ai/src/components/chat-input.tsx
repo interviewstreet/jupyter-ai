@@ -106,19 +106,20 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   const [autocompleteArgOptions, setAutocompleteArgOptions] = useState<
     AiService.AutocompleteOption[]
   >([]);
-  const [currSlashCommand, setCurrSlashCommand] = useState<string | null>(null);
-  const activeCell = useActiveCellContext();
+  // const [currSlashCommand, setCurrSlashCommand] = useState<string | null>(null);
+  // const activeCell = useActiveCellContext();
 
   /**
    * Effect: fetch the list of available slash commands from the backend on
    * initial mount to populate the slash command autocomplete.
    */
   useEffect(() => {
-    async function getAutocompleteCommandOptions() {
-      const response = await AiService.listAutocompleteOptions();
-      setAutocompleteCommandOptions(response.options);
-    }
-    getAutocompleteCommandOptions();
+    // async function getAutocompleteCommandOptions() {
+    //   const response = await AiService.listAutocompleteOptions();
+    //   setAutocompleteCommandOptions(response.options);
+    // }
+    // getAutocompleteCommandOptions();
+    setAutocompleteCommandOptions([]);
   }, []);
 
   useEffect(() => {
@@ -193,10 +194,10 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   /**
    * Effect: Set current slash command
    */
-  useEffect(() => {
-    const matchedSlashCommand = input.match(/^\s*\/\w+/);
-    setCurrSlashCommand(matchedSlashCommand && matchedSlashCommand[0]);
-  }, [input]);
+  // useEffect(() => {
+  //   const matchedSlashCommand = input.match(/^\s*\/\w+/);
+  //   setCurrSlashCommand(matchedSlashCommand && matchedSlashCommand[0]);
+  // }, [input]);
 
   /**
    * Effect: ensure that the `highlighted` is never `true` when `open` is
@@ -216,18 +217,18 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
 
     // if the current slash command is `/fix`, we always include a code cell
     // with error output in the selection.
-    if (currSlashCommand === '/fix') {
-      const cellWithError = activeCell.manager.getContent(true);
-      if (!cellWithError) {
-        return;
-      }
+    // if (currSlashCommand === '/fix') {
+    //   const cellWithError = activeCell.manager.getContent(true);
+    //   if (!cellWithError) {
+    //     return;
+    //   }
 
-      props.chatHandler.sendMessage({
-        prompt,
-        selection: { ...cellWithError, type: 'cell-with-error' }
-      });
-      return;
-    }
+    //   props.chatHandler.sendMessage({
+    //     prompt,
+    //     selection: { ...cellWithError, type: 'cell-with-error' }
+    //   });
+    //   return;
+    // }
 
     // otherwise, send a ChatRequest with the prompt and selection
     props.chatHandler.sendMessage({ prompt, selection });
@@ -287,9 +288,9 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     },
     streamingReplyHere: props.streamingReplyHere,
     sendWithShiftEnter: props.sendWithShiftEnter,
-    inputExists,
-    activeCellHasError: activeCell.hasError,
-    currSlashCommand
+    inputExists
+    // activeCellHasError: activeCell.hasError,
+    // currSlashCommand
   };
 
   function filterAutocompleteOptions(
