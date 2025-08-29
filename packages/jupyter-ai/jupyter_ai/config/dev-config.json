@@ -1,0 +1,39 @@
+{
+    "model_provider_id": "openai-chat-custom:gpt-4",
+    "embeddings_provider_id": "openai-custom:text-embedding-3-small",
+    "send_with_shift_enter": false,
+    "fields": {
+        "openai-chat-custom:gpt-4": {
+            "openai_api_base": "https://api.portkey.ai/v1"
+        },
+        "openai-chat-custom:gpt-4o": {
+            "openai_api_base": "https://api.portkey.ai/v1"
+        },
+        "openai-chat-custom:gpt-4o-mini": {
+            "openai_api_base": "https://api.portkey.ai/v1"
+        },
+        "openai-chat-custom:gpt-4-turbo": {
+            "openai_api_base": "https://api.portkey.ai/v1"
+        },
+        "openai-chat-custom:gpt-3.5-turbo": {
+            "openai_api_base": "https://api.portkey.ai/v1"
+        },
+        "openai-chat-custom:chatgpt-4o-latest": {
+            "openai_api_base": "https://api.portkey.ai/v1"
+        }
+    },
+    "api_keys": {
+        "OPENAI_API_KEY": "ENV:OPENAI_API_KEY"
+    },
+    "completions_model_provider_id": "openai-chat-custom:gpt-4",
+    "completions_fields": {
+        "openai-chat-custom:gpt-4": {
+            "openai_api_base": "https://api.portkey.ai/v1"
+        }
+    },
+    "embeddings_fields": {
+        "openai-custom:text-embedding-3-small": {
+            "openai_api_base": "https://api.portkey.ai/v1"
+        }
+    }
+}

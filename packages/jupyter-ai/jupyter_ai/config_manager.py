@@ -27,6 +27,9 @@ Logger = Union[logging.Logger, logging.LoggerAdapter]
 # DEFAULT_CONFIG_PATH = os.path.join(jupyter_data_dir(), "jupyter_ai", "config.json")
 DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "config.json")
 
+# Development config path
+DEV_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "dev-config.json")
+
 # default path to config JSON Schema
 # DEFAULT_SCHEMA_PATH = os.path.join(
 #     jupyter_data_dir(), "jupyter_ai", "config_schema.json"
