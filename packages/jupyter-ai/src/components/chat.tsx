@@ -105,7 +105,7 @@ function ChatBody({
   useEffect(() => {
     function onHistoryChange(_: unknown, history: AiService.ChatHistory) {
       setMessages([...history.messages]);
-      setPendingMessages([...history.pending_messages]);
+        setPendingMessages([...history.pending_messages]);
       setPersonaName(getPersonaName(history.messages));
     }
 
@@ -166,7 +166,7 @@ function ChatBody({
 
   return (
     <>
-      <ScrollContainer sx={{ flexGrow: 1 }}>
+      <ScrollContainer sx={{ flexGrow: 1, padding: 2 }}>
         <ChatMessages
           messages={messages}
           chatHandler={chatHandler}
