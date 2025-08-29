@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import { Box, Typography } from '@mui/material';
 import { AiService } from '../handler';
-import { ChatMessageHeader } from './chat-messages';
+// import { ChatMessageHeader } from './chat-messages';
 import { ChatHandler } from '../chat_handler';
 
 type PendingMessagesProps = {
@@ -43,14 +43,14 @@ function PendingMessageElement(props: PendingMessageElementProps): JSX.Element {
 export function PendingMessages(
   props: PendingMessagesProps
 ): JSX.Element | null {
-  const [timestamp, setTimestamp] = useState<string>('');
+  // const [timestamp, setTimestamp] = useState<string>('');
   const [agentMessage, setAgentMessage] =
     useState<AiService.AgentChatMessage | null>(null);
 
   useEffect(() => {
     if (props.messages.length === 0) {
       setAgentMessage(null);
-      setTimestamp('');
+      // setTimestamp('');
       return;
     }
     const lastMessage = props.messages[props.messages.length - 1];
@@ -65,14 +65,14 @@ export function PendingMessages(
     });
 
     // timestamp format copied from ChatMessage
-    const newTimestamp = new Date(lastMessage.time * 1000).toLocaleTimeString(
-      [],
-      {
-        hour: 'numeric',
-        minute: '2-digit'
-      }
-    );
-    setTimestamp(newTimestamp);
+    // const newTimestamp = new Date(lastMessage.time * 1000).toLocaleTimeString(
+    //   [],
+    //   {
+    //     hour: 'numeric',
+    //     minute: '2-digit'
+    //   }
+    // );
+    // setTimestamp(newTimestamp);
   }, [props.messages]);
 
   if (!agentMessage) {
@@ -81,19 +81,19 @@ export function PendingMessages(
 
   return (
     <Box
-      sx={{
-        padding: 4,
-        borderTop: '1px solid var(--jp-border-color2)'
-      }}
+    // sx={{
+    //   padding: 4,
+    //   borderTop: '1px solid var(--jp-border-color2)'
+    // }}
     >
-      <ChatMessageHeader
+      {/* <ChatMessageHeader
         message={agentMessage}
         chatHandler={props.chatHandler}
         timestamp={timestamp}
         sx={{
           marginBottom: 4
         }}
-      />
+      /> */}
       <Box
         sx={{
           marginBottom: 1,

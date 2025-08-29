@@ -7,6 +7,7 @@ from typing import Optional, Union
 
 from deepmerge import Merger, always_merger
 from jsonschema import Draft202012Validator as Validator
+from jupyter_ai.utils import is_dev
 from jupyter_ai.models import DescribeConfigResponse, GlobalConfig, UpdateConfigRequest
 from jupyter_ai_magics import JupyternautPersona, Persona
 from jupyter_ai_magics.utils import (
@@ -26,6 +27,9 @@ Logger = Union[logging.Logger, logging.LoggerAdapter]
 # default path to config
 # DEFAULT_CONFIG_PATH = os.path.join(jupyter_data_dir(), "jupyter_ai", "config.json")
 DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "config.json")
+
+# Development config path
+DEV_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config", "dev-config.json")
 
 # default path to config JSON Schema
 # DEFAULT_SCHEMA_PATH = os.path.join(
@@ -82,7 +86,7 @@ class ConfigManager(Configurable):
     """
 
     config_path = Unicode(
-        default_value=DEFAULT_CONFIG_PATH,
+        default_value=DEV_CONFIG_PATH if is_dev() else DEFAULT_CONFIG_PATH,
         help="Path to the configuration file.",
         allow_none=False,
         config=True,

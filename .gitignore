@@ -140,4 +140,5 @@ dev.sh
 packages/**/_version.py
 
 # Jupyter AI configuration file (contains API keys and sensitive data)
+packages/jupyter-ai/jupyter_ai/config/dev-config.json
 packages/jupyter-ai/jupyter_ai/config/config.json
