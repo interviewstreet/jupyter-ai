@@ -12,29 +12,13 @@ import { useActiveCellContext } from '../../contexts/active-cell-context';
 import { useSelectionContext } from '../../contexts/selection-context';
 import { useFileContext, IAvailableFile } from '../../contexts/file-context';
 import { generateUniqueId } from '../../utils';
-
-export enum CONTEXT_TYPE {
-  SELECTED_CODE = 'selected-code',
-  ACTIVE_BLOCK = 'active-block',
-  CURRENT_FILE = 'current-file',
-  FILE = 'FILE',
-  COMPLETE_CONTEXT = 'complete-context'
-}
-
-export interface IAttachContext {
-  id: string;
-  type: CONTEXT_TYPE;
-  label: string;
-  filePath?: string;
-  blockNumber?: number;
-  startLine?: number;
-  endLine?: number;
-  content?: string;
-}
+import { AiService } from '../../handler';
 
 export interface IAttachButtonProps {
-  attachedContexts: IAttachContext[];
-  setAttachedContexts: React.Dispatch<React.SetStateAction<IAttachContext[]>>;
+  attachedContexts: AiService.AttachContext[];
+  setAttachedContexts: React.Dispatch<
+    React.SetStateAction<AiService.AttachContext[]>
+  >;
 }
 
 export function AttachButton(props: IAttachButtonProps): JSX.Element {
@@ -80,9 +64,9 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
     const lineLabel =
       startLine === endLine ? `${startLine}` : `${startLine}-${endLine}`;
 
-    const context: IAttachContext = {
+    const context: AiService.AttachContext = {
       id: generateUniqueId(),
-      type: CONTEXT_TYPE.SELECTED_CODE,
+      type: AiService.CONTEXT_TYPE.SELECTED_CODE,
       label: `${fileName}: ${lineLabel}`,
       startLine,
       endLine,
@@ -107,9 +91,9 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
     const fileName = currentFile?.fileName || 'Notebook';
     const cellIndex = activeCell.manager.getCurrentCellIndex();
     const cellNumber = cellIndex >= 0 ? cellIndex + 1 : 1; // +1 for 1-based indexing
-    const context: IAttachContext = {
+    const context: AiService.AttachContext = {
       id: generateUniqueId(),
-      type: CONTEXT_TYPE.ACTIVE_BLOCK,
+      type: AiService.CONTEXT_TYPE.ACTIVE_BLOCK,
       label: `${fileName}: Cell ${cellNumber}`,
       blockNumber: cellNumber,
       content: cellContent.source
@@ -126,9 +110,9 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
 
     const content = await readFileContent(currentFile.filePath);
 
-    const context: IAttachContext = {
+    const context: AiService.AttachContext = {
       id: generateUniqueId(),
-      type: CONTEXT_TYPE.CURRENT_FILE,
+      type: AiService.CONTEXT_TYPE.CURRENT_FILE,
       label: currentFile.fileName,
       filePath: currentFile.filePath,
       content: content
@@ -139,9 +123,9 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
   }, [currentFile, props.setAttachedContexts]);
 
   const handleAddCompleteContext = useCallback(() => {
-    const context: IAttachContext = {
+    const context: AiService.AttachContext = {
       id: generateUniqueId(),
-      type: CONTEXT_TYPE.COMPLETE_CONTEXT,
+      type: AiService.CONTEXT_TYPE.COMPLETE_CONTEXT,
       label: 'Complete Context',
       content: ''
     };
@@ -184,9 +168,9 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
     async (file: IAvailableFile) => {
       try {
         const content = await readFileContent(file.path);
-        const context: IAttachContext = {
+        const context: AiService.AttachContext = {
           id: generateUniqueId(),
-          type: CONTEXT_TYPE.FILE,
+          type: AiService.CONTEXT_TYPE.FILE,
           label: file.name,
           filePath: file.path,
           content: content

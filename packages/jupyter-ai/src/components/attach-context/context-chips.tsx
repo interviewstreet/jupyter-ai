@@ -5,22 +5,24 @@ import CodeIcon from '@mui/icons-material/Code';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DataObjectIcon from '@mui/icons-material/DataObject';
 import SearchIcon from '@mui/icons-material/Search';
-import { CONTEXT_TYPE, IAttachContext } from './attach-button';
+import { AiService } from '../../handler';
 
 export interface IContextChipsProps {
-  attachedContexts: IAttachContext[];
-  setAttachedContexts: React.Dispatch<React.SetStateAction<IAttachContext[]>>;
+  attachedContexts: AiService.AttachContext[];
+  setAttachedContexts: React.Dispatch<
+    React.SetStateAction<AiService.AttachContext[]>
+  >;
 }
 
-function getIconForContextType(type: IAttachContext['type']): JSX.Element {
+function getIconForContextType(type: AiService.CONTEXT_TYPE): JSX.Element {
   switch (type) {
-    case CONTEXT_TYPE.SELECTED_CODE:
+    case AiService.CONTEXT_TYPE.SELECTED_CODE:
       return <CodeIcon fontSize="small" />;
-    case CONTEXT_TYPE.ACTIVE_BLOCK:
+    case AiService.CONTEXT_TYPE.ACTIVE_BLOCK:
       return <DataObjectIcon fontSize="small" />;
-    case CONTEXT_TYPE.CURRENT_FILE:
+    case AiService.CONTEXT_TYPE.CURRENT_FILE:
       return <DescriptionIcon fontSize="small" />;
-    case CONTEXT_TYPE.COMPLETE_CONTEXT:
+    case AiService.CONTEXT_TYPE.COMPLETE_CONTEXT:
       return <SearchIcon fontSize="small" />;
     default:
       return <DescriptionIcon fontSize="small" />;

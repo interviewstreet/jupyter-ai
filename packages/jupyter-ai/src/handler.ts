@@ -73,10 +73,30 @@ export namespace AiService {
     error: CellError;
   };
 
-  export type Selection =
-    | TextSelection
-    | CellSelection
-    | CellWithErrorSelection;
+  export enum CONTEXT_TYPE {
+    SELECTED_CODE = 'selected-code',
+    ACTIVE_BLOCK = 'active-block',
+    CURRENT_FILE = 'current-file',
+    FILE = 'FILE',
+    COMPLETE_CONTEXT = 'complete-context'
+  }
+
+  export type IAttachContext = {
+    id: string;
+    type: CONTEXT_TYPE;
+    label: string;
+    filePath?: string;
+    blockNumber?: number;
+    startLine?: number;
+    endLine?: number;
+    content?: string;
+  };
+
+  // export type Selection =
+  //   | TextSelection
+  //   | CellSelection
+  //   | CellWithErrorSelection;
+  export type Selection = IAttachContext[];
 
   export type ChatRequest = {
     prompt: string;

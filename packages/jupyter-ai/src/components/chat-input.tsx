@@ -20,7 +20,7 @@ import { ISignal } from '@lumino/signaling';
 
 import { AiService } from '../handler';
 import { SendButton, SendButtonProps } from './chat-input/send-button';
-import { AttachButton, IAttachContext } from './attach-context/attach-button';
+import { AttachButton } from './attach-context/attach-button';
 import { ContextChips } from './attach-context/context-chips';
 // import { useActiveCellContext } from '../contexts/active-cell-context';
 import { ChatHandler } from '../chat_handler';
@@ -108,9 +108,9 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   const [autocompleteArgOptions, setAutocompleteArgOptions] = useState<
     AiService.AutocompleteOption[]
   >([]);
-  const [attachedContexts, setAttachedContexts] = useState<IAttachContext[]>(
-    []
-  );
+  const [attachedContexts, setAttachedContexts] = useState<
+    AiService.AttachContext[]
+  >([]);
   // const [currSlashCommand, setCurrSlashCommand] = useState<string | null>(null);
   // const activeCell = useActiveCellContext();
 
@@ -216,7 +216,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     }
   }, [open, highlighted]);
 
-  function onSend(selection?: AiService.Selection) {
+  function onSend() {
     const prompt = input;
     setInput('');
 
@@ -236,7 +236,10 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     // }
 
     // otherwise, send a ChatRequest with the prompt and selection
-    props.chatHandler.sendMessage({ prompt, selection });
+    props.chatHandler.sendMessage({ prompt, selection: attachedContexts });
+
+    // Clear attached contexts after sending
+    setAttachedContexts([]);
   }
 
   const inputExists = !!input.trim();

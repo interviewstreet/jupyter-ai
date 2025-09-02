@@ -8,12 +8,12 @@ import { TooltippedButton } from '../mui-extras/tooltipped-button';
 import { includeSelectionIcon } from '../../icons';
 import { useActiveCellContext } from '../../contexts/active-cell-context';
 import { useSelectionContext } from '../../contexts/selection-context';
-import { AiService } from '../../handler';
+// import { AiService } from '../../handler';
 
 // const FIX_TOOLTIP = '/fix requires an active code cell with an error';
 
 export type SendButtonProps = {
-  onSend: (selection?: AiService.Selection) => unknown;
+  onSend: () => unknown;
   onStop: () => unknown;
   sendWithShiftEnter: boolean;
   // currSlashCommand: string | null;
@@ -94,24 +94,24 @@ export function SendButton(props: SendButtonProps): JSX.Element {
 
     // otherwise, parse the text selection or active cell, with the text
     // selection taking precedence.
-    if (textSelection?.text) {
-      props.onSend({
-        type: 'text',
-        source: textSelection.text
-      });
-      closeMenu();
-      return;
-    }
+    // if (textSelection?.text) {
+    //   props.onSend({
+    //     type: 'text',
+    //     source: textSelection.text
+    //   });
+    //   closeMenu();
+    //   return;
+    // }
 
-    if (activeCell.exists) {
-      props.onSend({
-        type: 'cell',
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        source: activeCell.manager.getContent(false)!.source
-      });
-      closeMenu();
-      return;
-    }
+    // if (activeCell.exists) {
+    //   props.onSend({
+    //     type: 'cell',
+    //     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    //     source: activeCell.manager.getContent(false)!.source
+    //   });
+    //   closeMenu();
+    //   return;
+    // }
   }
 
   return (
