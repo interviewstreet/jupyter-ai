@@ -82,14 +82,19 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
       return;
     }
 
+    const fileName = currentFile?.fileName || 'Unknown File';
+    const startLine = textSelection?.start?.line + 1;
+    const endLine = textSelection?.end?.line + 1;
+
+    const lineLabel =
+      startLine === endLine ? `${startLine}` : `${startLine}-${endLine}`;
+
     const context: IAttachContext = {
       id: generateUniqueId(),
       type: CONTEXT_TYPE.SELECTED_CODE,
-      label: `${textSelection.widgetId || 'Unknown'}: lines ${
-        textSelection.start.line + 1
-      }-${textSelection.end.line + 1}`,
-      startLine: textSelection.start.line + 1,
-      endLine: textSelection.end.line + 1,
+      label: `${fileName}: ${lineLabel}`,
+      startLine,
+      endLine,
       content: textSelection.text
     };
 
@@ -395,3 +400,10 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
     </Box>
   );
 }
+
+/**
+ * 1-CODE
+ * 3- CURRENT FILE
+ * 4- FILES
+ * 5- CONTEXT
+ */
