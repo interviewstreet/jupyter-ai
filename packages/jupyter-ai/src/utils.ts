@@ -71,3 +71,17 @@ export function getModelLocalId(globalModelId: string): string | null {
   const components = globalModelId.split(':').slice(1);
   return components.join(':');
 }
+
+/**
+ * Generate a unique identifier using crypto.randomUUID() if available,
+ * falling back to a timestamp-based approach for older environments.
+ */
+export function generateUniqueId(): string {
+  // Use crypto.randomUUID() if available (modern browsers)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  // Fallback for older environments: timestamp + random number
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+}

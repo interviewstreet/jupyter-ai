@@ -11,6 +11,7 @@ import { TooltippedButton } from '../mui-extras/tooltipped-button';
 import { useActiveCellContext } from '../../contexts/active-cell-context';
 import { useSelectionContext } from '../../contexts/selection-context';
 import { useFileContext, IAvailableFile } from '../../contexts/file-context';
+import { generateUniqueId } from '../../utils';
 
 export enum CONTEXT_TYPE {
   SELECTED_CODE = 'selected-code',
@@ -34,16 +35,6 @@ export interface IAttachContext {
 export interface IAttachButtonProps {
   attachedContexts: IAttachContext[];
   setAttachedContexts: React.Dispatch<React.SetStateAction<IAttachContext[]>>;
-}
-
-function generateUniqueId(): string {
-  // Use crypto.randomUUID() if available (modern browsers)
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-
-  // Fallback for older environments: timestamp + random number
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 }
 
 export function AttachButton(props: IAttachButtonProps): JSX.Element {
@@ -100,7 +91,7 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
 
     props.setAttachedContexts(prev => [...prev, context]);
     closeMenu();
-  }, [textSelection, props.setAttachedContexts]);
+  }, [textSelection, currentFile, props.setAttachedContexts]);
 
   const handleAddActiveBlock = useCallback(() => {
     if (!activeCell.exists) {
@@ -112,28 +103,35 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
       return;
     }
 
+    // Get file name and actual cell number
+    const fileName = currentFile?.fileName || 'Notebook';
+    const cellIndex = activeCell.manager.getCurrentCellIndex();
+    const cellNumber = cellIndex >= 0 ? cellIndex + 1 : 1; // +1 for 1-based indexing
     const context: IAttachContext = {
       id: generateUniqueId(),
       type: CONTEXT_TYPE.ACTIVE_BLOCK,
-      label: 'Notebook: active cell',
-      blockNumber: 1,
+      label: `${fileName}: Cell ${cellNumber}`,
+      blockNumber: cellNumber,
       content: cellContent.source
     };
 
     props.setAttachedContexts(prev => [...prev, context]);
     closeMenu();
-  }, [activeCell, props.setAttachedContexts]);
+  }, [activeCell, currentFile, props.setAttachedContexts]);
 
-  const handleAddCurrentFile = useCallback(() => {
+  const handleAddCurrentFile = useCallback(async () => {
     if (!currentFile) {
       return;
     }
+
+    const content = await readFileContent(currentFile.filePath);
 
     const context: IAttachContext = {
       id: generateUniqueId(),
       type: CONTEXT_TYPE.CURRENT_FILE,
       label: currentFile.fileName,
-      filePath: currentFile.filePath
+      filePath: currentFile.filePath,
+      content: content
     };
 
     props.setAttachedContexts(prev => [...prev, context]);
@@ -144,7 +142,7 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
     const context: IAttachContext = {
       id: generateUniqueId(),
       type: CONTEXT_TYPE.COMPLETE_CONTEXT,
-      label: 'Complete Context (Vector Search)',
+      label: 'Complete Context',
       content: ''
     };
 
@@ -402,8 +400,6 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
 }
 
 /**
- * 1-CODE
  * 3- CURRENT FILE
  * 4- FILES
- * 5- CONTEXT
  */

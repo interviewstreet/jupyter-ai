@@ -180,6 +180,25 @@ export class ActiveCellManager {
     activeCell.editor?.model.sharedModel.setSource(content);
   }
 
+  /**
+   * Gets the index of the current active cell.
+   */
+  getCurrentCellIndex(): number {
+    const notebook = getNotebook(this._mainAreaWidget);
+    const activeCell = this._activeCell;
+
+    if (!notebook || !activeCell) {
+      return -1;
+    }
+
+    const cellId = activeCell?.model?.sharedModel?.getId();
+    const idx = notebook.model?.sharedModel?.cells?.findIndex(
+      cell => cell.getId() === cellId
+    );
+
+    return idx === undefined ? -1 : idx;
+  }
+
   protected _pollActiveCell(): void {
     const prevActiveCell = this._activeCell;
     const currActiveCell = getActiveCell(this._mainAreaWidget);
