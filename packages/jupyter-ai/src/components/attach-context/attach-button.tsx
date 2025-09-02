@@ -32,7 +32,7 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
 
   const [textSelection] = useSelectionContext();
   const activeCell = useActiveCellContext();
-  const { currentFile, getAvailableFiles, readFileContent } = useFileContext();
+  const { currentFile, getAvailableFiles } = useFileContext();
 
   const { hasTextSelection, selectedLinesCount } = useMemo(() => {
     return {
@@ -108,14 +108,11 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
       return;
     }
 
-    const content = await readFileContent(currentFile.filePath);
-
     const context: AiService.AttachContext = {
       id: generateUniqueId(),
       type: AiService.CONTEXT_TYPE.CURRENT_FILE,
       label: currentFile.fileName,
-      filePath: currentFile.filePath,
-      content: content
+      filePath: currentFile.filePath
     };
 
     props.setAttachedContexts(prev => [...prev, context]);
@@ -167,13 +164,11 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
   const handleFileSelection = useCallback(
     async (file: IAvailableFile) => {
       try {
-        const content = await readFileContent(file.path);
         const context: AiService.AttachContext = {
           id: generateUniqueId(),
           type: AiService.CONTEXT_TYPE.FILE,
           label: file.name,
-          filePath: file.path,
-          content: content
+          filePath: file.path
         };
 
         props.setAttachedContexts(prev => [...prev, context]);
@@ -183,7 +178,7 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
         console.error('Failed to read file content:', error);
       }
     },
-    [readFileContent, props.setAttachedContexts, closeFileMenu, closeMenu]
+    [props.setAttachedContexts, closeFileMenu, closeMenu]
   );
 
   return (
