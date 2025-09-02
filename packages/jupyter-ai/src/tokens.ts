@@ -6,6 +6,7 @@ import type { IRankedMenu, ReactWidget } from '@jupyterlab/ui-components';
 import { AiService } from './handler';
 import { ChatHandler } from './chat_handler';
 import { ActiveCellManager } from './contexts/active-cell-context';
+import { FileManager } from './contexts/file-context';
 import { SelectionWatcher } from './selection-watcher';
 
 export interface IJaiStatusItem {
@@ -55,6 +56,7 @@ export interface IJaiCore {
   chatWidget: ReactWidget;
   chatHandler: ChatHandler;
   activeCellManager: ActiveCellManager;
+  fileManager: FileManager;
   selectionWatcher: SelectionWatcher;
 }
 

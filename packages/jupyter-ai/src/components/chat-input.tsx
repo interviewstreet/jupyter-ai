@@ -20,6 +20,8 @@ import { ISignal } from '@lumino/signaling';
 
 import { AiService } from '../handler';
 import { SendButton, SendButtonProps } from './chat-input/send-button';
+import { AttachButton, IAttachContext } from './attach-context/attach-button';
+import { ContextChips } from './attach-context/context-chips';
 // import { useActiveCellContext } from '../contexts/active-cell-context';
 import { ChatHandler } from '../chat_handler';
 import ModelSelection from './chat-input/model-selection';
@@ -106,6 +108,9 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   const [autocompleteArgOptions, setAutocompleteArgOptions] = useState<
     AiService.AutocompleteOption[]
   >([]);
+  const [attachedContexts, setAttachedContexts] = useState<IAttachContext[]>(
+    []
+  );
   // const [currSlashCommand, setCurrSlashCommand] = useState<string | null>(null);
   // const activeCell = useActiveCellContext();
 
@@ -322,6 +327,16 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
         ...props.sx
       }}
     >
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <AttachButton
+          attachedContexts={attachedContexts}
+          setAttachedContexts={setAttachedContexts}
+        />
+        <ContextChips
+          attachedContexts={attachedContexts}
+          setAttachedContexts={setAttachedContexts}
+        />
+      </Box>
       <Autocomplete
         autoHighlight
         freeSolo

@@ -30,9 +30,11 @@ import {
   ActiveCellContextProvider,
   ActiveCellManager
 } from '../contexts/active-cell-context';
+import { FileManager } from '../contexts/file-context';
 import { UserContextProvider, useUserContext } from '../contexts/user-context';
 import { ScrollContainer } from './scroll-container';
 import { TelemetryContextProvider } from '../contexts/telemetry-context';
+import { FileContextProvider } from '../contexts';
 
 type ChatBodyProps = {
   chatHandler: ChatHandler;
@@ -105,7 +107,7 @@ function ChatBody({
   useEffect(() => {
     function onHistoryChange(_: unknown, history: AiService.ChatHistory) {
       setMessages([...history.messages]);
-        setPendingMessages([...history.pending_messages]);
+      setPendingMessages([...history.pending_messages]);
       setPersonaName(getPersonaName(history.messages));
     }
 
@@ -196,6 +198,7 @@ export type ChatProps = {
   completionProvider: IJaiCompletionProvider | null;
   openInlineCompleterSettings: () => void;
   activeCellManager: ActiveCellManager;
+  fileManager: FileManager;
   focusInputSignal: ISignal<unknown, void>;
   messageFooter: IJaiMessageFooter | null;
   telemetryHandler: IJaiTelemetryHandler | null;
@@ -221,79 +224,83 @@ export function Chat(props: ChatProps): JSX.Element {
 
   return (
     <JlThemeProvider themeManager={props.themeManager}>
-      <SelectionContextProvider selectionWatcher={props.selectionWatcher}>
-        <CollaboratorsContextProvider globalAwareness={props.globalAwareness}>
-          <ActiveCellContextProvider
-            activeCellManager={props.activeCellManager}
-          >
-            <TelemetryContextProvider telemetryHandler={props.telemetryHandler}>
-              <UserContextProvider userManager={props.userManager}>
-                <Box
-                  // Add .jp-ThemedContainer for CSS compatibility in both JL <4.3.0 and >=4.3.0.
-                  // See: https://jupyterlab.readthedocs.io/en/latest/extension/extension_migration.html#css-styling
-                  className="jp-ThemedContainer"
-                  // root box should not include padding as it offsets the vertical
-                  // scrollbar to the left
-                  sx={{
-                    width: '100%',
-                    height: '100%',
-                    boxSizing: 'border-box',
-                    background: 'var(--jp-layout-color0)',
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                >
-                  {/* top bar */}
+      <FileContextProvider fileManager={props.fileManager}>
+        <SelectionContextProvider selectionWatcher={props.selectionWatcher}>
+          <CollaboratorsContextProvider globalAwareness={props.globalAwareness}>
+            <ActiveCellContextProvider
+              activeCellManager={props.activeCellManager}
+            >
+              <TelemetryContextProvider
+                telemetryHandler={props.telemetryHandler}
+              >
+                <UserContextProvider userManager={props.userManager}>
                   <Box
-                    sx={{ display: 'flex', justifyContent: 'space-between' }}
+                    // Add .jp-ThemedContainer for CSS compatibility in both JL <4.3.0 and >=4.3.0.
+                    // See: https://jupyterlab.readthedocs.io/en/latest/extension/extension_migration.html#css-styling
+                    className="jp-ThemedContainer"
+                    // root box should not include padding as it offsets the vertical
+                    // scrollbar to the left
+                    sx={{
+                      width: '100%',
+                      height: '100%',
+                      boxSizing: 'border-box',
+                      background: 'var(--jp-layout-color0)',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}
                   >
-                    {view !== ChatView.Chat ? (
-                      <IconButton onClick={() => setView(ChatView.Chat)}>
-                        <ArrowBackIcon />
-                      </IconButton>
-                    ) : (
-                      <Box />
+                    {/* top bar */}
+                    <Box
+                      sx={{ display: 'flex', justifyContent: 'space-between' }}
+                    >
+                      {view !== ChatView.Chat ? (
+                        <IconButton onClick={() => setView(ChatView.Chat)}>
+                          <ArrowBackIcon />
+                        </IconButton>
+                      ) : (
+                        <Box />
+                      )}
+                      {view === ChatView.Chat ? (
+                        <Box sx={{ display: 'flex' }}>
+                          {!showWelcomeMessage && <ChatSessions />}
+                          {showSettingsButton && (
+                            <IconButton onClick={() => openSettingsView()}>
+                              <SettingsIcon />
+                            </IconButton>
+                          )}
+                        </Box>
+                      ) : (
+                        <Box />
+                      )}
+                    </Box>
+                    {/* body */}
+                    {view === ChatView.Chat && (
+                      <ChatBody
+                        chatHandler={props.chatHandler}
+                        openSettingsView={openSettingsView}
+                        showWelcomeMessage={showWelcomeMessage}
+                        setShowWelcomeMessage={setShowWelcomeMessage}
+                        rmRegistry={props.rmRegistry}
+                        focusInputSignal={props.focusInputSignal}
+                        messageFooter={props.messageFooter}
+                      />
                     )}
-                    {view === ChatView.Chat ? (
-                      <Box sx={{ display: 'flex' }}>
-                        {!showWelcomeMessage && <ChatSessions />}
-                        {showSettingsButton && (
-                          <IconButton onClick={() => openSettingsView()}>
-                            <SettingsIcon />
-                          </IconButton>
-                        )}
-                      </Box>
-                    ) : (
-                      <Box />
+                    {view === ChatView.Settings && (
+                      <ChatSettings
+                        rmRegistry={props.rmRegistry}
+                        completionProvider={props.completionProvider}
+                        openInlineCompleterSettings={
+                          props.openInlineCompleterSettings
+                        }
+                      />
                     )}
                   </Box>
-                  {/* body */}
-                  {view === ChatView.Chat && (
-                    <ChatBody
-                      chatHandler={props.chatHandler}
-                      openSettingsView={openSettingsView}
-                      showWelcomeMessage={showWelcomeMessage}
-                      setShowWelcomeMessage={setShowWelcomeMessage}
-                      rmRegistry={props.rmRegistry}
-                      focusInputSignal={props.focusInputSignal}
-                      messageFooter={props.messageFooter}
-                    />
-                  )}
-                  {view === ChatView.Settings && (
-                    <ChatSettings
-                      rmRegistry={props.rmRegistry}
-                      completionProvider={props.completionProvider}
-                      openInlineCompleterSettings={
-                        props.openInlineCompleterSettings
-                      }
-                    />
-                  )}
-                </Box>
-              </UserContextProvider>
-            </TelemetryContextProvider>
-          </ActiveCellContextProvider>
-        </CollaboratorsContextProvider>
-      </SelectionContextProvider>
+                </UserContextProvider>
+              </TelemetryContextProvider>
+            </ActiveCellContextProvider>
+          </CollaboratorsContextProvider>
+        </SelectionContextProvider>
+      </FileContextProvider>
     </JlThemeProvider>
   );
 }

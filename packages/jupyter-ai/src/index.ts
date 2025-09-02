@@ -26,6 +26,7 @@ import {
 } from './tokens';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ActiveCellManager } from './contexts/active-cell-context';
+import { FileManager } from './contexts/file-context';
 import { Signal } from '@lumino/signaling';
 import { menuPlugin } from './plugins/menu-plugin';
 
@@ -75,6 +76,11 @@ const plugin: JupyterFrontEndPlugin<IJaiCore> = {
     const activeCellManager = new ActiveCellManager(app.shell);
 
     /**
+     * Initialize file manager singleton
+     */
+    const fileManager = new FileManager(app.shell, app.serviceManager.contents);
+
+    /**
      * Initialize chat handler, open WS connection
      */
     const chatHandler = new ChatHandler();
@@ -99,6 +105,7 @@ const plugin: JupyterFrontEndPlugin<IJaiCore> = {
         completionProvider,
         openInlineCompleterSettings,
         activeCellManager,
+        fileManager,
         focusInputSignal,
         messageFooter,
         telemetryHandler,
@@ -131,6 +138,7 @@ const plugin: JupyterFrontEndPlugin<IJaiCore> = {
       activeCellManager,
       chatHandler,
       chatWidget,
+      fileManager,
       selectionWatcher
     };
   }

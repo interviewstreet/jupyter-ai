@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { Box, Menu, MenuItem, Typography } from '@mui/material';
-import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
+// import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import SendIcon from '@mui/icons-material/Send';
 import StopIcon from '@mui/icons-material/Stop';
 
@@ -27,15 +27,16 @@ export type SendButtonProps = {
 };
 
 export function SendButton(props: SendButtonProps): JSX.Element {
-  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
+  // const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
+  const [menuAnchorEl] = useState<HTMLElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [textSelection] = useSelectionContext();
   const activeCell = useActiveCellContext();
 
-  const openMenu = useCallback((el: HTMLElement | null) => {
-    setMenuAnchorEl(el);
-    setMenuOpen(true);
-  }, []);
+  // const openMenu = useCallback((el: HTMLElement | null) => {
+  //   setMenuAnchorEl(el);
+  //   setMenuOpen(true);
+  // }, []);
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
@@ -133,7 +134,7 @@ export function SendButton(props: SendButtonProps): JSX.Element {
       >
         {action === 'stop' ? <StopIcon /> : <SendIcon />}
       </TooltippedButton>
-      <TooltippedButton
+      {/* <TooltippedButton
         onClick={e => {
           openMenu(e.currentTarget);
         }}
@@ -159,7 +160,7 @@ export function SendButton(props: SendButtonProps): JSX.Element {
         }}
       >
         <KeyboardArrowDown />
-      </TooltippedButton>
+      </TooltippedButton> */}
       <Menu
         open={menuOpen}
         onClose={closeMenu}

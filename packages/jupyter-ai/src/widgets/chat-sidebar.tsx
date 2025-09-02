@@ -16,6 +16,7 @@ import {
 } from '../tokens';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import type { ActiveCellManager } from '../contexts/active-cell-context';
+import type { FileManager } from '../contexts/file-context';
 
 export function buildChatSidebar(
   selectionWatcher: SelectionWatcher,
@@ -26,6 +27,7 @@ export function buildChatSidebar(
   completionProvider: IJaiCompletionProvider | null,
   openInlineCompleterSettings: () => void,
   activeCellManager: ActiveCellManager,
+  fileManager: FileManager,
   focusInputSignal: ISignal<unknown, void>,
   messageFooter: IJaiMessageFooter | null,
   telemetryHandler: IJaiTelemetryHandler | null,
@@ -41,6 +43,7 @@ export function buildChatSidebar(
       completionProvider={completionProvider}
       openInlineCompleterSettings={openInlineCompleterSettings}
       activeCellManager={activeCellManager}
+      fileManager={fileManager}
       focusInputSignal={focusInputSignal}
       messageFooter={messageFooter}
       telemetryHandler={telemetryHandler}
