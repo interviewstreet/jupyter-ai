@@ -398,8 +398,3 @@ export function AttachButton(props: IAttachButtonProps): JSX.Element {
     </Box>
   );
 }
-
-/**
- * 3- CURRENT FILE
- * 4- FILES
- */
